@@ -1,18 +1,49 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import SportsSection from './components/SportsSection'
 import RegisterModal from './components/RegisterModal'
+import LoginModal from './components/LoginModal'
+import AddCaptainModal from './components/AddCaptainModal'
 import AboutSection from './components/AboutSection'
 import Footer from './components/Footer'
 import StatusPopup from './components/StatusPopup'
 
 function App() {
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
+  const [isAddCaptainModalOpen, setIsAddCaptainModalOpen] = useState(false)
   const [selectedSport, setSelectedSport] = useState(null)
   const [statusPopup, setStatusPopup] = useState({ show: false, message: '', type: 'success' })
+  const loginSuccessRef = useRef(false) // Track if login was successful to preserve selectedSport
+  
+  // Load logged-in user from localStorage on mount
+  const [loggedInUser, setLoggedInUser] = useState(() => {
+    const storedUser = localStorage.getItem('loggedInUser')
+    return storedUser ? JSON.parse(storedUser) : null
+  })
+
+  // Save logged-in user to localStorage whenever it changes
+  useEffect(() => {
+    if (loggedInUser) {
+      localStorage.setItem('loggedInUser', JSON.stringify(loggedInUser))
+    } else {
+      localStorage.removeItem('loggedInUser')
+    }
+  }, [loggedInUser])
 
   const handleSportClick = (sport) => {
+    // If admin is logged in, do nothing (admin can view but not register)
+    if (loggedInUser?.reg_number === '00000000000') {
+      return
+    }
+    // If user is not logged in, open login modal and store the selected sport
+    if (!loggedInUser) {
+      setSelectedSport(sport)
+      setIsLoginModalOpen(true)
+      return
+    }
+    // If user is logged in, open registration modal
     setSelectedSport(sport)
     setIsModalOpen(true)
   }
@@ -20,6 +51,42 @@ function App() {
   const handleCloseModal = () => {
     setIsModalOpen(false)
     setSelectedSport(null)
+  }
+
+  const handleCloseLoginModal = () => {
+    setIsLoginModalOpen(false)
+    // Clear selected sport if user closes login modal without logging in
+    // (selectedSport will be preserved if login is successful)
+    if (!loginSuccessRef.current) {
+      setSelectedSport(null)
+    }
+    loginSuccessRef.current = false // Reset the flag
+  }
+
+  const handleLoginSuccess = (student) => {
+    // Store student data in memory (excluding password)
+    setLoggedInUser(student)
+    // Set flag to indicate login was successful
+    loginSuccessRef.current = true
+    // If there was a selected sport before login, open registration modal after login
+    if (selectedSport) {
+      setIsLoginModalOpen(false)
+      setTimeout(() => {
+        setIsModalOpen(true)
+      }, 100)
+    }
+  }
+
+  const handleUserUpdate = (updatedStudent) => {
+    // Update logged-in user data (e.g., after participation update)
+    setLoggedInUser(updatedStudent)
+  }
+
+  const handleLogout = () => {
+    // Clear logged-in user data from memory and localStorage
+    setLoggedInUser(null)
+    localStorage.removeItem('loggedInUser')
+    showStatusPopup('✅ Logged out successfully!', 'success', 2000)
   }
 
   const showStatusPopup = (message, type = 'success', duration = 2500) => {
@@ -34,14 +101,33 @@ function App() {
       <Navbar />
       <main id="top" className="max-w-[1300px] mx-auto px-4 py-6 pb-10 grid grid-cols-[minmax(0,1.6fr)] gap-10 max-md:grid-cols-1">
         <section>
-          <Hero />
-          <SportsSection onSportClick={handleSportClick} />
+          <Hero 
+            onRegisterClick={() => setIsModalOpen(true)} 
+            onLoginClick={() => setIsLoginModalOpen(true)}
+            onLogout={handleLogout}
+            onAddCaptainClick={() => setIsAddCaptainModalOpen(true)}
+            loggedInUser={loggedInUser}
+          />
+          <SportsSection onSportClick={handleSportClick} loggedInUser={loggedInUser} />
         </section>
       </main>
       <RegisterModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         selectedSport={selectedSport}
+        onStatusPopup={showStatusPopup}
+        loggedInUser={loggedInUser}
+        onUserUpdate={handleUserUpdate}
+      />
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={handleCloseLoginModal}
+        onLoginSuccess={handleLoginSuccess}
+        onStatusPopup={showStatusPopup}
+      />
+      <AddCaptainModal
+        isOpen={isAddCaptainModalOpen}
+        onClose={() => setIsAddCaptainModalOpen(false)}
         onStatusPopup={showStatusPopup}
       />
       <AboutSection />

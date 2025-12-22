@@ -54,17 +54,46 @@ function SportCard({ sport, type, onSportClick }) {
   )
 }
 
-function SportsSection({ onSportClick }) {
+function SportsSection({ onSportClick, loggedInUser }) {
+  // Show Team Events if:
+  // - User is not logged in (show all events)
+  // - OR logged in user's reg_number is "00000000000" (admin - show all)
+  // - OR logged in user has non-empty captain_in array (show only sports in captain_in)
+  const isAdmin = loggedInUser?.reg_number === '00000000000'
+  const hasCaptainRole = loggedInUser?.captain_in && Array.isArray(loggedInUser.captain_in) && loggedInUser.captain_in.length > 0
+  const showTeamEvents = !loggedInUser || isAdmin || hasCaptainRole
+
+  // Filter team sports based on captain_in for non-admin users
+  const getTeamSportsToShow = () => {
+    if (!loggedInUser || isAdmin) {
+      // Show all team sports for non-logged-in users or admin
+      return sportsData.team
+    }
+    if (hasCaptainRole) {
+      // Show only sports that are in captain_in array
+      return sportsData.team.filter(sport => 
+        loggedInUser.captain_in.includes(sport.name)
+      )
+    }
+    return []
+  }
+
+  const teamSportsToShow = getTeamSportsToShow()
+
   return (
     <section id="sports" className="mt-[2.2rem]">
-      <h3 className="text-center mt-14 mb-[1.4rem] text-[1.4rem] tracking-[0.16em] uppercase text-[#ffe66d]">
-        Team Events
-      </h3>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-[1.2rem]">
-        {sportsData.team.map((sport) => (
-          <SportCard key={sport.name} sport={sport} type="team" onSportClick={onSportClick} />
-        ))}
-      </div>
+      {showTeamEvents && teamSportsToShow.length > 0 && (
+        <>
+          <h3 className="text-center mt-14 mb-[1.4rem] text-[1.4rem] tracking-[0.16em] uppercase text-[#ffe66d]">
+            Team Events
+          </h3>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-[1.2rem]">
+            {teamSportsToShow.map((sport) => (
+              <SportCard key={sport.name} sport={sport} type="team" onSportClick={onSportClick} />
+            ))}
+          </div>
+        </>
+      )}
 
       <h3 className="text-center mt-14 mb-[1.4rem] text-[1.4rem] tracking-[0.16em] uppercase text-[#ffe66d]">
         Individual Events

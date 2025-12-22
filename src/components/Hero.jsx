@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-function Hero() {
+function Hero({ onRegisterClick, onLoginClick, onLogout, onAddCaptainClick, loggedInUser }) {
   const [eventCountdown, setEventCountdown] = useState('')
 
   useEffect(() => {
@@ -72,6 +72,48 @@ function Hero() {
         {eventCountdown && (
           <div id="eventCountdown" className="mt-2 mb-0 text-center text-base font-semibold text-red-500">
             {eventCountdown}
+          </div>
+        )}
+        {loggedInUser ? (
+          <div className="mt-4 mb-2 text-center flex gap-4 justify-center items-center flex-wrap">
+            <div className="text-[1.2rem] font-bold text-[#ffe66d] drop-shadow-[0_0_8px_rgba(0,0,0,0.8)]">
+              Welcome {loggedInUser.full_name}
+            </div>
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                className="px-6 py-2 rounded-full border border-[rgba(148,163,184,0.7)] text-sm font-bold uppercase tracking-[0.1em] cursor-pointer bg-[rgba(15,23,42,0.95)] text-[#e5e7eb] shadow-[0_10px_24px_rgba(0,0,0,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(0,0,0,0.8)]"
+              >
+                Logout
+              </button>
+            )}
+            {loggedInUser?.reg_number === '00000000000' && onAddCaptainClick && (
+              <button
+                onClick={onAddCaptainClick}
+                className="px-6 py-2 rounded-full border border-[rgba(148,163,184,0.7)] text-sm font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-[#e5e7eb] shadow-[0_10px_24px_rgba(79,70,229,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(79,70,229,0.8)]"
+              >
+                Add Captain
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="mt-4 mb-2 text-center flex gap-4 justify-center items-center">
+            {onLoginClick && (
+              <button
+                onClick={onLoginClick}
+                className="px-8 py-3 rounded-full border border-[rgba(148,163,184,0.7)] text-base font-bold uppercase tracking-[0.1em] cursor-pointer bg-[rgba(15,23,42,0.95)] text-[#e5e7eb] shadow-[0_10px_24px_rgba(0,0,0,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(0,0,0,0.8)]"
+              >
+                Login
+              </button>
+            )}
+            {onRegisterClick && (
+              <button
+                onClick={onRegisterClick}
+                className="px-8 py-3 rounded-full border-none text-base font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#ffe66d] to-[#ff9f1c] text-[#111827] shadow-[0_10px_24px_rgba(250,204,21,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(250,204,21,0.75)]"
+              >
+                Register
+              </button>
+            )}
           </div>
         )}
       </div>

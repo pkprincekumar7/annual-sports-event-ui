@@ -3,100 +3,50 @@ import { useState, useEffect } from 'react'
 const SCRIPT_URL =
   'https://script.google.com/macros/s/AKfycbzc16n3UxlBROhxToMYhdS-sC6AnLX9Wk5_8ymnchwbSUUT13oigk89A6EK9J1mY5NJGA/exec'
 
-function PlayerSection({ index, isCollapsed, onToggle }) {
-  return (
-    <div className={`rounded-xl border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] mb-[0.7rem] ${isCollapsed ? '' : ''}`}>
-      <button
-        type="button"
-        className="w-full text-left px-[0.8rem] py-2 bg-[rgba(15,23,42,0.9)] border-none text-[#e5e7eb] text-[0.9rem] font-semibold cursor-pointer relative"
-        onClick={onToggle}
-      >
-        Player {index}
-        <span className="float-right text-[0.8rem]">{isCollapsed ? '►' : '▼'}</span>
-      </button>
-      {!isCollapsed && (
-        <div className="px-[0.8rem] py-[0.6rem] pb-[0.8rem] border-t border-[rgba(148,163,184,0.4)]">
-          <div className="flex flex-col mb-[0.7rem]">
-            <label className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">Full Name *</label>
-            <input
-              type="text"
-              name={`playerName_${index}`}
-              required
-              className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
-            />
-          </div>
-          <div className="flex flex-col mb-[0.7rem]">
-            <label className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">Roll / Reg. no. *</label>
-            <input
-              type="text"
-              name={`playerRoll_${index}`}
-              required
-              className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
-            />
-          </div>
-          <div className="flex flex-col mb-[0.7rem]">
-            <label className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">Year *</label>
-            <select
-              name={`playerYear_${index}`}
-              required
-              className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
-            >
-              <option value="">Select</option>
-              <option>1st Year</option>
-              <option>2nd Year</option>
-              <option>3rd Year</option>
-              <option>4th Year</option>
-            </select>
-          </div>
-          <div className="flex flex-col mb-[0.7rem]">
-            <label className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">Department / Branch *</label>
-            <select
-              name={`playerDept_${index}`}
-              required
-              className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
-            >
-              <option value="">Select</option>
-              <option>CSE</option>
-              <option>CSE (AI)</option>
-              <option>ECE</option>
-              <option>EE</option>
-              <option>CE</option>
-              <option>ME</option>
-              <option>MTE</option>
-            </select>
-          </div>
-          <div className="flex flex-col mb-[0.7rem]">
-            <label className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">Mobile number *</label>
-            <input
-              type="tel"
-              name={`playerPhone_${index}`}
-              required
-              className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
-            />
-          </div>
-          <div className="flex flex-col mb-[0.7rem]">
-            <label className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">Email ID *</label>
-            <input
-              type="email"
-              name={`playerEmail_${index}`}
-              required
-              className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
-            />
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup }) {
+function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedInUser, onUserUpdate }) {
   const [registrationCountdown, setRegistrationCountdown] = useState('')
-  const [collapsedPlayers, setCollapsedPlayers] = useState({})
+  const [students, setStudents] = useState([])
+  const [selectedPlayers, setSelectedPlayers] = useState({})
 
   const isTeam = selectedSport?.type === 'team'
   const playerCount = isTeam ? selectedSport?.players || 0 : 0
-  const isCricket = selectedSport?.name?.toLowerCase() === 'cricket'
+  const isGeneralRegistration = !selectedSport
 
+  // Fetch students list for team player dropdowns
+  useEffect(() => {
+    if (isOpen && isTeam) {
+      fetch('http://localhost:3001/api/students')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) {
+            setStudents(data.students || [])
+          }
+        })
+        .catch((err) => {
+          console.error('Error fetching students:', err)
+          setStudents([])
+        })
+    }
+  }, [isOpen, isTeam])
+
+  // Reset selected players when modal opens/closes or sport changes
+  useEffect(() => {
+    if (isOpen && isTeam && playerCount > 0) {
+      const initial = {}
+      for (let i = 1; i <= playerCount; i++) {
+        initial[i] = ''
+      }
+      // Auto-select logged-in user as Player 1 if they are a captain
+      if (loggedInUser?.reg_number && loggedInUser?.captain_in && Array.isArray(loggedInUser.captain_in) && loggedInUser.captain_in.length > 0) {
+        initial[1] = loggedInUser.reg_number
+      }
+      setSelectedPlayers(initial)
+    } else {
+      setSelectedPlayers({})
+    }
+  }, [isOpen, isTeam, playerCount, loggedInUser])
+
+  // Registration countdown
   useEffect(() => {
     if (!isOpen) return
 
@@ -126,54 +76,260 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup }) {
     return () => clearInterval(timer)
   }, [isOpen])
 
-  useEffect(() => {
-    if (isTeam && playerCount > 0) {
-      const initialCollapsed = {}
-      for (let i = 1; i <= playerCount; i++) {
-        initialCollapsed[i] = true
-      }
-      setCollapsedPlayers(initialCollapsed)
-    }
-  }, [isTeam, playerCount])
-
-  const togglePlayer = (index) => {
-    setCollapsedPlayers((prev) => ({
+  const handlePlayerSelect = (playerIndex, regNumber) => {
+    setSelectedPlayers((prev) => ({
       ...prev,
-      [index]: !prev[index],
+      [playerIndex]: regNumber,
     }))
   }
 
-  const handleSubmit = async (e) => {
+  // Handle general registration form submission
+  const handleGeneralSubmit = async (e) => {
     e.preventDefault()
 
-    const formData = new FormData(e.target)
-    formData.append('sports', selectedSport?.name || '')
-    formData.append('eventType', selectedSport?.type || 'individual')
-    formData.append('collegeName', 'Purnea College of Engineering, Purnea')
+    const form = e.target
+    const regNumber = form.querySelector('[name="reg_number"]')?.value?.trim()
+    const fullName = form.querySelector('[name="full_name"]')?.value?.trim()
+    const gender = form.querySelector('[name="gender"]')?.value?.trim()
+    const dept = form.querySelector('[name="department_branch"]')?.value?.trim()
+    const year = form.querySelector('[name="year"]')?.value?.trim()
+    const phone = form.querySelector('[name="mobile_number"]')?.value?.trim()
+    const email = form.querySelector('[name="email_id"]')?.value?.trim()
+    const password = form.querySelector('[name="password"]')?.value?.trim()
 
-    // Collect player data
-    if (isTeam) {
-      for (let i = 1; i <= playerCount; i++) {
-        formData.append(`playerName_${i}`, formData.get(`playerName_${i}`) || '')
-        formData.append(`playerRoll_${i}`, formData.get(`playerRoll_${i}`) || '')
-        formData.append(`playerYear_${i}`, formData.get(`playerYear_${i}`) || '')
-        formData.append(`playerDept_${i}`, formData.get(`playerDept_${i}`) || '')
-        formData.append(`playerPhone_${i}`, formData.get(`playerPhone_${i}`) || '')
-        formData.append(`playerEmail_${i}`, formData.get(`playerEmail_${i}`) || '')
-      }
+    if (!regNumber || !fullName || !gender || !dept || !year || !phone || !email || !password) {
+      onStatusPopup('❌ Please fill all required fields.', 'error', 2500)
+      return
     }
 
     try {
+      // Save to JSON file via backend API
+      const response = await fetch('http://localhost:3001/api/save-student', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reg_number: regNumber,
+          full_name: fullName,
+          gender: gender,
+          department_branch: dept,
+          year: year,
+          mobile_number: phone,
+          email_id: email,
+          password: password,
+        }),
+      })
+
+      const data = await response.json()
+      
+      if (response.ok && data.success) {
+        onStatusPopup('✅ Your registration has been saved!', 'success', 2500)
+        form.reset()
+        setTimeout(() => {
+          onClose()
+        }, 2500)
+      } else {
+        // Handle error response (including duplicate registration)
+        const errorMessage = data.error || 'Error while saving. Please try again.'
+        onStatusPopup(`❌ ${errorMessage}`, 'error', 3000)
+      }
+    } catch (err) {
+      console.error(err)
+      onStatusPopup('❌ Error while saving. Please try again.', 'error', 2500)
+    }
+  }
+
+  // Handle team event form submission
+  const handleTeamSubmit = async (e) => {
+    e.preventDefault()
+
+    if (!loggedInUser) {
+      onStatusPopup('❌ Please login to register a team.', 'error', 2500)
+      return
+    }
+
+    const form = e.target
+    const teamName = form.querySelector('[name="teamName"]')?.value?.trim()
+
+    if (!teamName) {
+      onStatusPopup('❌ Please enter team name.', 'error', 2500)
+      return
+    }
+
+    // Validate all players are selected
+    const missingPlayers = []
+    for (let i = 1; i <= playerCount; i++) {
+      if (!selectedPlayers[i]) {
+        missingPlayers.push(i)
+      }
+    }
+
+    if (missingPlayers.length > 0) {
+      onStatusPopup(`❌ Please select all players.`, 'error', 2500)
+      return
+    }
+
+    // Validate that logged-in user is one of the selected players
+    const loggedInUserSelected = Object.values(selectedPlayers).includes(loggedInUser.reg_number)
+    if (!loggedInUserSelected) {
+      onStatusPopup('❌ You must include yourself as one of the players.', 'error', 3000)
+      return
+    }
+
+    // Check for duplicate players
+    const playerRegNumbers = []
+    const duplicateCheck = new Set()
+    const duplicates = []
+    
+    for (let i = 1; i <= playerCount; i++) {
+      if (selectedPlayers[i]) {
+        if (duplicateCheck.has(selectedPlayers[i])) {
+          const student = students.find(s => s.reg_number === selectedPlayers[i])
+          duplicates.push(student ? student.full_name : selectedPlayers[i])
+        } else {
+          duplicateCheck.add(selectedPlayers[i])
+          playerRegNumbers.push(selectedPlayers[i])
+        }
+      }
+    }
+
+    if (duplicates.length > 0) {
+      onStatusPopup(`❌ Duplicate players selected: ${duplicates.join(', ')}. Each player can only be selected once.`, 'error', 5000)
+      return
+    }
+
+    // Validate that all selected players have the same gender as logged-in user
+    const genderMismatches = []
+    for (let i = 1; i <= playerCount; i++) {
+      if (selectedPlayers[i]) {
+        const student = students.find(s => s.reg_number === selectedPlayers[i])
+        if (student && student.gender !== loggedInUser.gender) {
+          genderMismatches.push(`${student.full_name} (${student.reg_number})`)
+        }
+      }
+    }
+
+    if (genderMismatches.length > 0) {
+      onStatusPopup(`❌ Gender mismatch: ${genderMismatches.join(', ')} must have the same gender (${loggedInUser.gender}) as you.`, 'error', 5000)
+      return
+    }
+
+    // Validate that all selected players have the same year as logged-in user
+    const yearMismatches = []
+    for (let i = 1; i <= playerCount; i++) {
+      if (selectedPlayers[i]) {
+        const student = students.find(s => s.reg_number === selectedPlayers[i])
+        if (student && student.year !== loggedInUser.year) {
+          yearMismatches.push(`${student.full_name} (${student.reg_number})`)
+        }
+      }
+    }
+
+    if (yearMismatches.length > 0) {
+      onStatusPopup(`❌ Year mismatch: ${yearMismatches.join(', ')} must be in the same year (${loggedInUser.year}) as you.`, 'error', 5000)
+      return
+    }
+
+    // Validate participation limits before submitting
+    try {
+      const validationResponse = await fetch('http://localhost:3001/api/validate-participations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reg_numbers: playerRegNumbers,
+          sport: selectedSport.name,
+        }),
+      })
+
+      const validationData = await validationResponse.json()
+      if (!validationResponse.ok || !validationData.success) {
+        const errorMessage = validationData.error || 'Some players cannot participate. Please check and try again.'
+        onStatusPopup(`❌ ${errorMessage}`, 'error', 5000)
+        return
+      }
+    } catch (validationError) {
+      console.error('Error validating participations:', validationError)
+      // Continue with submission if validation fails (network error)
+    }
+
+    try {
+      const formData = new FormData()
+      formData.append('sports', selectedSport.name)
+      formData.append('eventType', 'team')
+      formData.append('teamName', teamName)
+      formData.append('collegeName', 'Purnea College of Engineering, Purnea')
+
+      // Add selected players
+      for (let i = 1; i <= playerCount; i++) {
+        const student = students.find((s) => s.reg_number === selectedPlayers[i])
+        if (student) {
+          formData.append(`player_${i}`, `${student.full_name} (${student.reg_number})`)
+        }
+      }
+
+      // Submit to Google Apps Script
       await fetch(SCRIPT_URL, {
         method: 'POST',
         mode: 'no-cors',
         body: formData,
       })
 
-      const sportName = selectedSport?.name || 'UMANG – 2026'
-      onStatusPopup(`✅ Your registration for ${sportName.toUpperCase()} has been saved!`, 'success', 2500)
+      // Update participated_in for all selected players (already collected above)
+      if (playerRegNumbers.length > 0) {
+        try {
+          const participationResponse = await fetch('http://localhost:3001/api/update-team-participation', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              reg_numbers: playerRegNumbers,
+              sport: selectedSport.name,
+              team_name: teamName,
+            }),
+          })
 
-      e.target.reset()
+          const participationData = await participationResponse.json()
+          
+          if (!participationResponse.ok || !participationData.success) {
+            // Show error message to user
+            const errorMessage = participationData.error || 'Error updating player participations. Please try again.'
+            onStatusPopup(`❌ ${errorMessage}`, 'error', 5000)
+            return // Don't proceed with closing modal
+          }
+
+          // Update logged-in user data if they are one of the players
+          if (loggedInUser && playerRegNumbers.includes(loggedInUser.reg_number) && onUserUpdate) {
+            // Fetch updated student data
+            try {
+              const studentResponse = await fetch('http://localhost:3001/api/students')
+              const studentData = await studentResponse.json()
+              if (studentData.success) {
+                const updatedStudent = studentData.students.find(s => s.reg_number === loggedInUser.reg_number)
+                if (updatedStudent) {
+                  const { password: _, ...studentWithoutPassword } = updatedStudent
+                  onUserUpdate(studentWithoutPassword)
+                }
+              }
+            } catch (updateError) {
+              console.error('Error updating user data:', updateError)
+              // Don't block success message if user update fails
+            }
+          }
+        } catch (participationError) {
+          console.error('Error updating participation:', participationError)
+          onStatusPopup('❌ Error updating player participations. Please try again.', 'error', 4000)
+          return
+        }
+      }
+
+      onStatusPopup(`✅ Your team registration for ${selectedSport.name.toUpperCase()} has been saved!`, 'success', 2500)
+
+      form.reset()
+      setSelectedPlayers({})
       setTimeout(() => {
         onClose()
       }, 2500)
@@ -183,8 +339,249 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup }) {
     }
   }
 
+  // Handle individual/cultural event confirmation
+  const handleIndividualConfirm = async (confirmed) => {
+    if (!confirmed) {
+      onClose()
+      return
+    }
+
+    if (!loggedInUser) {
+      onStatusPopup('❌ Please login to participate.', 'error', 2500)
+      return
+    }
+
+    try {
+      const formData = new FormData()
+      formData.append('sports', selectedSport.name)
+      formData.append('eventType', 'individual')
+      formData.append('collegeName', 'Purnea College of Engineering, Purnea')
+      formData.append('confirmed', 'yes')
+
+      // Submit to Google Apps Script
+      await fetch(SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: formData,
+      })
+
+      // Update participated_in field in students.json
+      try {
+        const response = await fetch('http://localhost:3001/api/update-participation', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            reg_number: loggedInUser.reg_number,
+            sport: selectedSport.name,
+          }),
+        })
+
+        const data = await response.json()
+
+        if (!response.ok || !data.success) {
+          // Show error message to user
+          const errorMessage = data.error || 'Error updating participation. Please try again.'
+          onStatusPopup(`❌ ${errorMessage}`, 'error', 5000)
+          return // Don't proceed with closing modal or showing success
+        }
+
+        // Update logged-in user data with latest information
+        if (data.student && onUserUpdate) {
+          const { password: _, ...updatedStudent } = data.student
+          onUserUpdate(updatedStudent)
+        }
+
+        onStatusPopup(`✅ Your registration for ${selectedSport.name.toUpperCase()} has been saved!`, 'success', 2500)
+
+        setTimeout(() => {
+          onClose()
+        }, 2500)
+      } catch (participationError) {
+        console.error('Error updating participation:', participationError)
+        onStatusPopup('❌ Error updating participation. Please try again.', 'error', 4000)
+        return
+      }
+    } catch (err) {
+      console.error(err)
+      onStatusPopup('❌ Error while submitting. Please try again.', 'error', 2500)
+    }
+  }
+
   if (!isOpen) return null
 
+  // Individual/Cultural Events - Confirmation Dialog
+  if (selectedSport && !isTeam) {
+    return (
+      <div
+        className="fixed inset-0 bg-[rgba(0,0,0,0.65)] flex items-center justify-center z-[200] p-4"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose()
+        }}
+      >
+        <aside className="max-w-[420px] w-full bg-gradient-to-br from-[rgba(12,16,40,0.98)] to-[rgba(9,9,26,0.94)] rounded-[20px] px-[1.4rem] py-[1.6rem] pb-[1.5rem] border border-[rgba(255,255,255,0.12)] shadow-[0_22px_55px_rgba(0,0,0,0.8)] backdrop-blur-[20px] relative">
+          <button
+            type="button"
+            className="absolute top-[10px] right-3 bg-transparent border-none text-[#e5e7eb] text-base cursor-pointer"
+            onClick={onClose}
+          >
+            ✕
+          </button>
+
+          <div className="text-[0.78rem] uppercase tracking-[0.16em] text-[#a5b4fc] mb-1 text-center">Official Registration</div>
+          <div className="text-[1.25rem] font-extrabold text-center uppercase tracking-[0.14em] text-[#ffe66d] mb-[0.7rem]">
+            {selectedSport.name.toUpperCase()}
+          </div>
+          <div className="text-[0.85rem] text-center text-[#e5e7eb] mb-6">PCE, Purnea • Umang – 2026 Sports Fest</div>
+
+          {registrationCountdown && (
+            <div className="my-2 mb-6 text-center text-base font-semibold text-red-500">{registrationCountdown}</div>
+          )}
+
+          <div className="text-center text-[1.1rem] font-semibold text-[#e5e7eb] mb-8">
+            Are you sure you want to participate?
+          </div>
+
+          <div className="flex gap-[0.6rem] mt-[0.8rem]">
+            <button
+              type="button"
+              onClick={() => handleIndividualConfirm(true)}
+              className="flex-1 rounded-full border-none py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#ffe66d] to-[#ff9f1c] text-[#111827] shadow-[0_10px_24px_rgba(250,204,21,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(250,204,21,0.75)]"
+            >
+              Yes
+            </button>
+            <button
+              type="button"
+              onClick={() => handleIndividualConfirm(false)}
+              className="flex-1 rounded-full border border-[rgba(148,163,184,0.7)] py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-[rgba(15,23,42,0.95)] text-[#e5e7eb] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(15,23,42,0.9)]"
+            >
+              No
+            </button>
+          </div>
+        </aside>
+      </div>
+    )
+  }
+
+  // Team Events - Team Name + Player Dropdowns
+  // Only show for logged-in users with captain_in (non-empty array)
+  if (selectedSport && isTeam) {
+    // Check if user is logged in and has captain role
+    const hasCaptainRole = loggedInUser?.captain_in && Array.isArray(loggedInUser.captain_in) && loggedInUser.captain_in.length > 0
+    if (!loggedInUser || !hasCaptainRole) {
+      // Don't show form if user is not a captain
+      return null
+    }
+    return (
+      <div
+        className="fixed inset-0 bg-[rgba(0,0,0,0.65)] flex items-center justify-center z-[200] p-4"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose()
+        }}
+      >
+        <aside className="max-w-[420px] w-full bg-gradient-to-br from-[rgba(12,16,40,0.98)] to-[rgba(9,9,26,0.94)] rounded-[20px] px-[1.4rem] py-[1.6rem] pb-[1.5rem] border border-[rgba(255,255,255,0.12)] shadow-[0_22px_55px_rgba(0,0,0,0.8)] backdrop-blur-[20px] relative max-h-[90vh] overflow-y-auto">
+          <button
+            type="button"
+            className="absolute top-[10px] right-3 bg-transparent border-none text-[#e5e7eb] text-base cursor-pointer"
+            onClick={onClose}
+          >
+            ✕
+          </button>
+
+          <div className="text-[0.78rem] uppercase tracking-[0.16em] text-[#a5b4fc] mb-1 text-center">Official Registration</div>
+          <div className="text-[1.25rem] font-extrabold text-center uppercase tracking-[0.14em] text-[#ffe66d] mb-[0.7rem]">
+            Team Registration
+          </div>
+          <div className="text-[0.85rem] text-center text-[#e5e7eb] mb-4">PCE, Purnea • Umang – 2026 Sports Fest</div>
+          <div className="my-1 mb-4 text-center text-[0.95rem] font-semibold text-[#ffe66d]">
+            Sports Name: {selectedSport.name.toUpperCase()}
+          </div>
+
+          {registrationCountdown && (
+            <div className="my-2 mb-[0.9rem] text-center text-base font-semibold text-red-500">{registrationCountdown}</div>
+          )}
+
+          <form id="teamRegistrationForm" onSubmit={handleTeamSubmit}>
+            <div className="flex flex-col mb-[0.7rem]">
+              <label htmlFor="teamName" className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">
+                Team Name *
+              </label>
+              <input
+                type="text"
+                id="teamName"
+                name="teamName"
+                required
+                className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
+              />
+            </div>
+
+            {Array.from({ length: playerCount }, (_, i) => i + 1).map((index) => {
+              // Get all selected reg_numbers except the current one
+              const otherSelectedRegNumbers = Object.entries(selectedPlayers)
+                .filter(([key, value]) => key !== String(index) && value)
+                .map(([_, value]) => value)
+
+              return (
+                <div key={index} className="flex flex-col mb-[0.7rem]">
+                  <label htmlFor={`player_${index}`} className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">
+                    Player {index} {index === 1 && loggedInUser ? '(You - Required)' : ''} *
+                  </label>
+                  <select
+                    id={`player_${index}`}
+                    name={`player_${index}`}
+                    required
+                    value={selectedPlayers[index] || ''}
+                    onChange={(e) => handlePlayerSelect(index, e.target.value)}
+                    className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
+                  >
+                    <option value="">Select Player</option>
+                    {students
+                      .filter((student) => 
+                        student.reg_number !== '00000000000' && 
+                        student.gender === loggedInUser?.gender &&
+                        student.year === loggedInUser?.year &&
+                        (student.reg_number === selectedPlayers[index] || !otherSelectedRegNumbers.includes(student.reg_number))
+                      )
+                      .map((student) => (
+                        <option key={student.reg_number} value={student.reg_number}>
+                          {student.full_name} ({student.reg_number})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )
+            })}
+
+            <div className="flex flex-col mb-[0.7rem]">
+              <label className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">
+                <input type="checkbox" id="declaration" required className="mr-2" />
+                I agree to follow all rules of Umang 2026.
+              </label>
+            </div>
+
+            <div className="flex gap-[0.6rem] mt-[0.8rem]">
+              <button
+                type="submit"
+                className="flex-1 rounded-full border-none py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#ffe66d] to-[#ff9f1c] text-[#111827] shadow-[0_10px_24px_rgba(250,204,21,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(250,204,21,0.75)]"
+              >
+                Submit
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 rounded-full border border-[rgba(148,163,184,0.7)] py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-[rgba(15,23,42,0.95)] text-[#e5e7eb] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(15,23,42,0.9)]"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </aside>
+      </div>
+    )
+  }
+
+  // General Registration - Full Form
   return (
     <div
       className="fixed inset-0 bg-[rgba(0,0,0,0.65)] flex items-center justify-center z-[200] p-4"
@@ -206,177 +603,130 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup }) {
           Student Entry Form
         </div>
         <div className="text-[0.85rem] text-center text-[#e5e7eb] mb-4">PCE, Purnea • Umang – 2026 Sports Fest</div>
-        <div className="my-1 mb-4 text-center text-[0.95rem] font-semibold text-[#ffe66d]">
-          Sports Name: {selectedSport?.name ? selectedSport.name.toUpperCase() : '—'}
-        </div>
 
         {registrationCountdown && (
           <div className="my-2 mb-[0.9rem] text-center text-base font-semibold text-red-500">{registrationCountdown}</div>
         )}
 
-        <form id="registrationForm" onSubmit={handleSubmit}>
-          {isTeam && (
-            <div>
-              <div className="flex flex-col mb-[0.7rem]">
-                <label htmlFor="teamName" className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">
-                  Team Name *
-                </label>
-                <input
-                  type="text"
-                  id="teamName"
-                  name="teamName"
-                  required
-                  className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
-                />
-              </div>
-
-              <div className="flex flex-col mb-[0.7rem]">
-                <label htmlFor="teamCategory" className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">
-                  Category *
-                </label>
-                <select
-                  id="teamCategory"
-                  name="teamCategory"
-                  required
-                  className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
-                >
-                  <option value="">Select</option>
-                  <option>Boys</option>
-                  {!isCricket && <option>Girls</option>}
-                </select>
-              </div>
-            </div>
-          )}
-
-          {!isTeam && (
-            <>
-              <div className="flex flex-col mb-[0.7rem]">
-                <label htmlFor="name" className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">
-                  Full Name *
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  required
-                  className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
-                />
-              </div>
-
-              <div className="flex flex-col mb-[0.7rem]">
-                <label htmlFor="category" className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">
-                  Category *
-                </label>
-                <select
-                  id="category"
-                  name="category"
-                  required
-                  className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
-                >
-                  <option value="">Select</option>
-                  <option>Boys</option>
-                  {!isCricket && <option>Girls</option>}
-                </select>
-              </div>
-
-              <div className="flex flex-col mb-[0.7rem]">
-                <label htmlFor="roll" className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">
-                  Roll / Reg. no. *
-                </label>
-                <input
-                  type="text"
-                  id="roll"
-                  name="roll"
-                  required
-                  className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
-                />
-              </div>
-
-              <div className="flex flex-col mb-[0.7rem]">
-                <label htmlFor="year" className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">
-                  Year *
-                </label>
-                <select
-                  id="year"
-                  name="year"
-                  required
-                  className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
-                >
-                  <option value="">Select</option>
-                  <option>1st Year (2025)</option>
-                  <option>2nd Year (2024)</option>
-                  <option>3rd Year (2023)</option>
-                  <option>4th Year (2022)</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col mb-[0.7rem]">
-                <label htmlFor="dept" className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">
-                  Department / Branch *
-                </label>
-                <select
-                  id="dept"
-                  name="dept"
-                  required
-                  className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
-                >
-                  <option value="">Select</option>
-                  <option>CSE</option>
-                  <option>CSE (AI)</option>
-                  <option>ECE</option>
-                  <option>EE</option>
-                  <option>CE</option>
-                  <option>ME</option>
-                  <option>MTE</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col mb-[0.7rem]">
-                <label htmlFor="phone" className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">
-                  Mobile number *
-                </label>
-                <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
-                  required
-                  className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
-                />
-              </div>
-
-              <div className="flex flex-col mb-[0.7rem]">
-                <label htmlFor="email" className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">
-                  Email ID *
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  required
-                  className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
-                />
-              </div>
-            </>
-          )}
-
-          {isTeam && playerCount > 0 && (
-            <div>
-              {Array.from({ length: playerCount }, (_, i) => i + 1).map((index) => (
-                <PlayerSection
-                  key={index}
-                  index={index}
-                  isCollapsed={collapsedPlayers[index]}
-                  onToggle={() => togglePlayer(index)}
-                />
-              ))}
-            </div>
-          )}
+        <form id="generalRegistrationForm" onSubmit={handleGeneralSubmit}>
+          <div className="flex flex-col mb-[0.7rem]">
+            <label htmlFor="reg_number" className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">
+              Reg. Number *
+            </label>
+            <input
+              type="text"
+              id="reg_number"
+              name="reg_number"
+              required
+              className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
+            />
+          </div>
 
           <div className="flex flex-col mb-[0.7rem]">
-            <label className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">
-              <input type="checkbox" id="declaration" required className="mr-2" />
-              I agree to follow all rules of Umang 2026.
+            <label htmlFor="full_name" className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">
+              Full Name *
             </label>
+            <input
+              type="text"
+              id="full_name"
+              name="full_name"
+              required
+              className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
+            />
+          </div>
+
+          <div className="flex flex-col mb-[0.7rem]">
+            <label htmlFor="gender" className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">
+              Gender *
+            </label>
+            <select
+              id="gender"
+              name="gender"
+              required
+              className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
+            >
+              <option value="">Select</option>
+              <option>Male</option>
+              <option>Female</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col mb-[0.7rem]">
+            <label htmlFor="department_branch" className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">
+              Department / Branch *
+            </label>
+            <select
+              id="department_branch"
+              name="department_branch"
+              required
+              className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
+            >
+              <option value="">Select</option>
+              <option>CSE</option>
+              <option>CSE (AI)</option>
+              <option>ECE</option>
+              <option>EE</option>
+              <option>CE</option>
+              <option>ME</option>
+              <option>MTE</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col mb-[0.7rem]">
+            <label htmlFor="year" className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">
+              Year *
+            </label>
+            <select
+              id="year"
+              name="year"
+              required
+              className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
+            >
+              <option value="">Select</option>
+              <option>1st Year (2025)</option>
+              <option>2nd Year (2024)</option>
+              <option>3rd Year (2023)</option>
+              <option>4th Year (2022)</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col mb-[0.7rem]">
+            <label htmlFor="mobile_number" className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">
+              Mobile Number *
+            </label>
+            <input
+              type="tel"
+              id="mobile_number"
+              name="mobile_number"
+              required
+              className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
+            />
+          </div>
+
+          <div className="flex flex-col mb-[0.7rem]">
+            <label htmlFor="email_id" className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">
+              Email ID *
+            </label>
+            <input
+              type="email"
+              id="email_id"
+              name="email_id"
+              required
+              className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
+            />
+          </div>
+
+          <div className="flex flex-col mb-[0.7rem]">
+            <label htmlFor="password" className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">
+              Password *
+            </label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              required
+              className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
+            />
           </div>
 
           <div className="flex gap-[0.6rem] mt-[0.8rem]">
@@ -401,4 +751,3 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup }) {
 }
 
 export default RegisterModal
-
