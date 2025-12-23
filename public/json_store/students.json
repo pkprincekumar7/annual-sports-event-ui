@@ -41,8 +41,7 @@
     "password": "12345",
     "participated_in": [
       {
-        "sport": "Relay 4×100 m",
-        "team_name": "Relay 4X100 M Team 1"
+        "sport": "Carrom"
       }
     ],
     "captain_in": [
@@ -61,14 +60,14 @@
     "password": "12345",
     "participated_in": [
       {
-        "sport": "Relay 4×100 m",
-        "team_name": "Relay 4X100 M Team 1"
-      },
-      {
         "sport": "Carrom"
       },
       {
         "sport": "Chess"
+      },
+      {
+        "sport": "Relay 4×100 m",
+        "team_name": "Relay 4X100 M Team 1"
       }
     ],
     "captain_in": []
@@ -86,6 +85,12 @@
       {
         "sport": "Relay 4×100 m",
         "team_name": "Relay 4X100 M Team 1"
+      },
+      {
+        "sport": "Carrom"
+      },
+      {
+        "sport": "Chess"
       }
     ],
     "captain_in": []
@@ -99,7 +104,12 @@
     "mobile_number": "1234567809",
     "email_id": "a@b.c",
     "password": "12345",
-    "participated_in": [],
+    "participated_in": [
+      {
+        "sport": "Relay 4×100 m",
+        "team_name": "Relay 4X100 M Team 1"
+      }
+    ],
     "captain_in": []
   },
   {
@@ -123,8 +133,16 @@
     "mobile_number": "1243568790",
     "email_id": "q@s.m",
     "password": "12345",
-    "participated_in": [],
-    "captain_in": []
+    "participated_in": [
+      {
+        "sport": "Relay 4×100 m",
+        "team_name": "Relay 4X100 M Team 2"
+      }
+    ],
+    "captain_in": [
+      "Relay 4×100 m",
+      "Kabaddi"
+    ]
   },
   {
     "reg_number": "98765",
@@ -135,7 +153,12 @@
     "mobile_number": "3456789012",
     "email_id": "a@m.n",
     "password": "12345",
-    "participated_in": [],
+    "participated_in": [
+      {
+        "sport": "Relay 4×100 m",
+        "team_name": "Relay 4X100 M Team 2"
+      }
+    ],
     "captain_in": []
   },
   {
@@ -147,7 +170,12 @@
     "mobile_number": "1243567809",
     "email_id": "q@s.n",
     "password": "12345",
-    "participated_in": [],
+    "participated_in": [
+      {
+        "sport": "Relay 4×100 m",
+        "team_name": "Relay 4X100 M Team 2"
+      }
+    ],
     "captain_in": []
   },
   {
@@ -159,7 +187,34 @@
     "mobile_number": "2345687091",
     "email_id": "a@v.m",
     "password": "12345",
-    "participated_in": [],
+    "participated_in": [
+      {
+        "sport": "Relay 4×100 m",
+        "team_name": "Relay 4X100 M Team 2"
+      }
+    ],
+    "captain_in": []
+  },
+  {
+    "reg_number": "132457",
+    "full_name": "S v",
+    "gender": "Male",
+    "department_branch": "MTE",
+    "year": "4th Year (2022)",
+    "mobile_number": "0192837465",
+    "email_id": "q@m.n",
+    "password": "12345",
+    "participated_in": [
+      {
+        "sport": "Carrom"
+      },
+      {
+        "sport": "Essay Writing"
+      },
+      {
+        "sport": "Story Writing"
+      }
+    ],
     "captain_in": []
   }
 ]

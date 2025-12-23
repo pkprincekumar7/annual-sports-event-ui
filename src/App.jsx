@@ -5,6 +5,8 @@ import SportsSection from './components/SportsSection'
 import RegisterModal from './components/RegisterModal'
 import LoginModal from './components/LoginModal'
 import AddCaptainModal from './components/AddCaptainModal'
+import TeamDetailsModal from './components/TeamDetailsModal'
+import ParticipantDetailsModal from './components/ParticipantDetailsModal'
 import AboutSection from './components/AboutSection'
 import Footer from './components/Footer'
 import StatusPopup from './components/StatusPopup'
@@ -13,6 +15,8 @@ function App() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
   const [isAddCaptainModalOpen, setIsAddCaptainModalOpen] = useState(false)
+  const [isTeamDetailsModalOpen, setIsTeamDetailsModalOpen] = useState(false)
+  const [isParticipantDetailsModalOpen, setIsParticipantDetailsModalOpen] = useState(false)
   const [selectedSport, setSelectedSport] = useState(null)
   const [statusPopup, setStatusPopup] = useState({ show: false, message: '', type: 'success' })
   const loginSuccessRef = useRef(false) // Track if login was successful to preserve selectedSport
@@ -33,16 +37,67 @@ function App() {
   }, [loggedInUser])
 
   const handleSportClick = (sport) => {
-    // If admin is logged in, do nothing (admin can view but not register)
-    if (loggedInUser?.reg_number === '00000000000') {
+    // If admin is logged in and it's a team event, open team details modal
+    if (loggedInUser?.reg_number === '00000000000' && sport.type === 'team') {
+      setSelectedSport(sport)
+      setIsTeamDetailsModalOpen(true)
       return
     }
+    // If admin is logged in and it's not a team event, show participant details
+    if (loggedInUser?.reg_number === '00000000000' && sport.type === 'individual') {
+      setSelectedSport(sport)
+      setIsParticipantDetailsModalOpen(true)
+      return
+    }
+    
+    // Check if user is a captain for this sport
+    const isCaptainForSport = loggedInUser?.captain_in && 
+      Array.isArray(loggedInUser.captain_in) && 
+      loggedInUser.captain_in.includes(sport.name)
+    
+    // If captain clicks on their team event sport
+    if (isCaptainForSport && sport.type === 'team') {
+      // Check if captain has already created a team for this sport
+      const hasTeam = loggedInUser?.participated_in && 
+        Array.isArray(loggedInUser.participated_in) &&
+        loggedInUser.participated_in.some(p => 
+          p.sport === sport.name && p.team_name
+        )
+      
+      if (hasTeam) {
+        // Captain has a team - show team details
+        setSelectedSport(sport)
+        setIsTeamDetailsModalOpen(true)
+      } else {
+        // Captain hasn't created a team yet - show registration form
+        setSelectedSport(sport)
+        setIsModalOpen(true)
+      }
+      return
+    }
+    
     // If user is not logged in, open login modal and store the selected sport
     if (!loggedInUser) {
       setSelectedSport(sport)
       setIsLoginModalOpen(true)
       return
     }
+    
+    // For individual/cultural events, check if user has already participated
+    // Skip this check for admin users
+    const isAdmin = loggedInUser?.reg_number === '00000000000'
+    if (sport.type === 'individual' && !isAdmin) {
+      const hasParticipated = loggedInUser?.participated_in && 
+        Array.isArray(loggedInUser.participated_in) &&
+        loggedInUser.participated_in.some(p => p.sport === sport.name)
+      
+      if (hasParticipated) {
+        // User has already participated - show message
+        showStatusPopup('You have already participated.', 'error', 3000)
+        return
+      }
+    }
+    
     // If user is logged in, open registration modal
     setSelectedSport(sport)
     setIsModalOpen(true)
@@ -129,6 +184,23 @@ function App() {
         isOpen={isAddCaptainModalOpen}
         onClose={() => setIsAddCaptainModalOpen(false)}
         onStatusPopup={showStatusPopup}
+      />
+      <TeamDetailsModal
+        isOpen={isTeamDetailsModalOpen}
+        onClose={() => {
+          setIsTeamDetailsModalOpen(false)
+          setSelectedSport(null)
+        }}
+        sport={selectedSport?.name}
+        loggedInUser={loggedInUser}
+      />
+      <ParticipantDetailsModal
+        isOpen={isParticipantDetailsModalOpen}
+        onClose={() => {
+          setIsParticipantDetailsModalOpen(false)
+          setSelectedSport(null)
+        }}
+        sport={selectedSport?.name}
       />
       <AboutSection />
       <Footer />
