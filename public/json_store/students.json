@@ -45,8 +45,7 @@
       }
     ],
     "captain_in": [
-      "Relay 4×100 m",
-      "Kabaddi"
+      "Relay 4×100 m"
     ]
   },
   {
@@ -64,10 +63,6 @@
       },
       {
         "sport": "Chess"
-      },
-      {
-        "sport": "Relay 4×100 m",
-        "team_name": "Relay 4X100 M Team 1"
       }
     ],
     "captain_in": []
@@ -85,9 +80,6 @@
       {
         "sport": "Relay 4×100 m",
         "team_name": "Relay 4X100 M Team 1"
-      },
-      {
-        "sport": "Carrom"
       },
       {
         "sport": "Chess"
@@ -209,10 +201,8 @@
         "sport": "Carrom"
       },
       {
-        "sport": "Essay Writing"
-      },
-      {
-        "sport": "Story Writing"
+        "sport": "Relay 4×100 m",
+        "team_name": "Relay 4X100 M Team 1"
       }
     ],
     "captain_in": []

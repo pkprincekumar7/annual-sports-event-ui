@@ -2,8 +2,8 @@ const sportsData = {
   team: [
     { name: 'Cricket', image: '/images/Cricket.jpg', text: 'College teams clash for the trophy.', players: 15 },
     { name: 'Volleyball', image: '/images/Vollyball.jpg', text: 'Smash, block and dominate the court.', players: 9 },
-    { name: 'Badminton', image: '/images/Badminton.jpeg', text: "Men's & women's doubles and team events.", players: 5 },
-    { name: 'Table Tennis', image: '/images/Tabletennis.jpeg', text: 'Fast rallies and sharp reflexes.', players: 5 },
+    { name: 'Badminton', image: '/images/Badminton.jpeg', text: "Men's & women's doubles and team events.", players: 4 },
+    { name: 'Table Tennis', image: '/images/Tabletennis.jpeg', text: 'Fast rallies and sharp reflexes.', players: 4 },
     { name: 'Kabaddi', image: '/images/Kabbadi.png', text: 'Raid, tackle and roar with your squad.', players: 10 },
     { name: 'Relay 4×100 m', image: '/images/Relay1.o.jpg', text: 'High-speed baton relay on the track.', players: 4 },
     { name: 'Relay 4×400 m', image: '/images/Relay.jpg', text: 'Ultimate test of stamina and teamwork.', players: 4 },
@@ -33,7 +33,10 @@ const sportsData = {
   ],
 }
 
-function SportCard({ sport, type, onSportClick }) {
+function SportCard({ sport, type, onSportClick, loggedInUser, isEnrolled }) {
+  const isAdmin = loggedInUser?.reg_number === '00000000000'
+  const showEnrolled = !isAdmin && isEnrolled
+
   return (
     <div
       className="relative h-[170px] rounded-[18px] overflow-hidden shadow-[0_18px_40px_rgba(0,0,0,0.75)] cursor-pointer translate-y-0 transition-all duration-[0.25s] ease-in-out hover:-translate-y-2 hover:shadow-[0_26px_55px_rgba(0,0,0,0.9)]"
@@ -46,6 +49,11 @@ function SportCard({ sport, type, onSportClick }) {
         className="absolute inset-0 bg-cover bg-center opacity-90"
         style={{ backgroundImage: `url('${sport.image}')` }}
       />
+      {showEnrolled && (
+        <div className="absolute top-2 right-2 px-3 py-1 rounded-full bg-[rgba(34,197,94,0.9)] text-white text-[0.75rem] font-bold uppercase tracking-[0.1em] shadow-[0_4px_12px_rgba(0,0,0,0.5)] z-10">
+          Enrolled!
+        </div>
+      )}
       <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.9)] to-[rgba(0,0,0,0.2)] flex flex-col justify-end p-[0.9rem] px-[1.1rem] text-[#f9fafb] drop-shadow-[0_3px_12px_rgba(0,0,0,0.9)]">
         <div className="text-[1.1rem] font-extrabold text-[#ffe66d] uppercase">{sport.name}</div>
         <div className="text-[0.85rem] mt-[0.15rem]">{sport.text}</div>
@@ -80,6 +88,31 @@ function SportsSection({ onSportClick, loggedInUser }) {
 
   const teamSportsToShow = getTeamSportsToShow()
 
+  // Helper function to check if user is enrolled in a sport
+  const isEnrolledInSport = (sportName, sportType) => {
+    if (!loggedInUser || isAdmin) {
+      return false
+    }
+
+    if (!loggedInUser.participated_in || !Array.isArray(loggedInUser.participated_in)) {
+      return false
+    }
+
+    const participation = loggedInUser.participated_in.find(p => p.sport === sportName)
+    
+    if (!participation) {
+      return false
+    }
+
+    // For team events: check if user has a team (has team_name)
+    if (sportType === 'team') {
+      return !!participation.team_name
+    }
+
+    // For individual events: check if user has participated (no team_name)
+    return !participation.team_name
+  }
+
   return (
     <section id="sports" className="mt-[2.2rem]">
       {showTeamEvents && teamSportsToShow.length > 0 && (
@@ -89,7 +122,14 @@ function SportsSection({ onSportClick, loggedInUser }) {
           </h3>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-[1.2rem]">
             {teamSportsToShow.map((sport) => (
-              <SportCard key={sport.name} sport={sport} type="team" onSportClick={onSportClick} />
+              <SportCard 
+                key={sport.name} 
+                sport={sport} 
+                type="team" 
+                onSportClick={onSportClick}
+                loggedInUser={loggedInUser}
+                isEnrolled={isEnrolledInSport(sport.name, 'team')}
+              />
             ))}
           </div>
         </>
@@ -100,7 +140,14 @@ function SportsSection({ onSportClick, loggedInUser }) {
       </h3>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-[1.2rem]">
         {sportsData.individual.map((sport) => (
-          <SportCard key={sport.name} sport={sport} type="individual" onSportClick={onSportClick} />
+          <SportCard 
+            key={sport.name} 
+            sport={sport} 
+            type="individual" 
+            onSportClick={onSportClick}
+            loggedInUser={loggedInUser}
+            isEnrolled={isEnrolledInSport(sport.name, 'individual')}
+          />
         ))}
       </div>
 
@@ -109,7 +156,14 @@ function SportsSection({ onSportClick, loggedInUser }) {
       </h3>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-[1.2rem]">
         {sportsData.cultural.map((sport) => (
-          <SportCard key={sport.name} sport={sport} type="individual" onSportClick={onSportClick} />
+          <SportCard 
+            key={sport.name} 
+            sport={sport} 
+            type="individual" 
+            onSportClick={onSportClick}
+            loggedInUser={loggedInUser}
+            isEnrolled={isEnrolledInSport(sport.name, 'individual')}
+          />
         ))}
       </div>
     </section>

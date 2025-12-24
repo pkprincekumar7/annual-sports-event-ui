@@ -126,7 +126,7 @@ app.post('/api/add-captain', (req, res) => {
       students[studentIndex].captain_in = []
     }
 
-    // Check if already a captain for this sport
+    // Check if already a captain for this sport (uniqueness check)
     if (students[studentIndex].captain_in.includes(sport)) {
       return res.status(400).json({ 
         success: false, 
@@ -134,11 +134,74 @@ app.post('/api/add-captain', (req, res) => {
       })
     }
 
-    // Check maximum limit of 3 sports for captain
-    if (students[studentIndex].captain_in.length >= 3) {
+    // Check for duplicate elements in captain_in array
+    const captainInSet = new Set(students[studentIndex].captain_in)
+    if (captainInSet.size !== students[studentIndex].captain_in.length) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Maximum 3 sports allowed for being a captain. Please remove a captain assignment first.' 
+        error: 'captain_in array contains duplicate entries. Please fix the data first.' 
+      })
+    }
+
+    // Check maximum limit: captain_in array can have maximum 10 unique entries
+    const currentCaptainCount = students[studentIndex].captain_in.length
+    if (currentCaptainCount >= 10) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Maximum 10 captain roles allowed. Please remove a captain assignment first.' 
+      })
+    }
+
+    // Initialize participated_in array if it doesn't exist
+    if (!students[studentIndex].participated_in) {
+      students[studentIndex].participated_in = []
+    }
+
+    // Check for duplicate sport entries in participated_in array (uniqueness check)
+    const sportSet = new Set(students[studentIndex].participated_in.map(p => p.sport))
+    if (sportSet.size !== students[studentIndex].participated_in.length) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'participated_in array contains duplicate sport entries. Please fix the data first.' 
+      })
+    }
+
+    // Check maximum limit: participated_in array can have maximum 10 unique entries (based on sport name)
+    const currentParticipationsCount = students[studentIndex].participated_in.length
+    if (currentParticipationsCount >= 10) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Maximum 10 participations allowed (based on unique sport names). Please remove a participation first.' 
+      })
+    }
+
+    // Count non-team participations (entries without team_name)
+    const nonTeamParticipations = students[studentIndex].participated_in.filter(
+      p => !p.team_name
+    ).length
+
+    // Count team participations where sport IS in captain_in array (these count towards captain limit)
+    const captainTeamParticipations = students[studentIndex].participated_in.filter(
+      p => p.team_name && 
+      students[studentIndex].captain_in && 
+      Array.isArray(students[studentIndex].captain_in) && 
+      students[studentIndex].captain_in.includes(p.sport)
+    ).length
+
+    // Check: (captain_in length + non-team participated_in) should not exceed 10
+    if (currentCaptainCount + nonTeamParticipations >= 10) {
+      return res.status(400).json({ 
+        success: false, 
+        error: `Cannot add captain role. Total (captain roles + non-team participations) cannot exceed 10. Current: ${currentCaptainCount} captain role(s) + ${nonTeamParticipations} non-team participation(s) = ${currentCaptainCount + nonTeamParticipations}.` 
+      })
+    }
+
+    // Check: team participations (for captain sports) should not exceed captain_in length
+    // After adding this new captain role, max team participations for captain sports = currentCaptainCount + 1
+    if (captainTeamParticipations >= currentCaptainCount + 1) {
+      return res.status(400).json({ 
+        success: false, 
+        error: `Cannot add captain role. Maximum team participations allowed for sports in captain_in array is ${currentCaptainCount + 1} (equal to captain roles). Current team participations for captain sports: ${captainTeamParticipations}.` 
       })
     }
 
@@ -161,6 +224,170 @@ app.post('/api/add-captain', (req, res) => {
     res.status(500).json({ 
       success: false, 
       error: 'Failed to add captain',
+      details: error.message 
+    })
+  }
+})
+
+// API endpoint to remove captain
+app.delete('/api/remove-captain', (req, res) => {
+  try {
+    let { reg_number, sport } = req.body
+
+    // Trim fields
+    reg_number = reg_number?.trim()
+    sport = sport?.trim()
+
+    // Validate required fields
+    if (!reg_number || !sport) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Registration number and sport are required' 
+      })
+    }
+
+    // Validate sport is a team sport
+    const teamSports = [
+      'Cricket',
+      'Volleyball',
+      'Badminton',
+      'Table Tennis',
+      'Kabaddi',
+      'Relay 4×100 m',
+      'Relay 4×400 m',
+    ]
+    if (!teamSports.includes(sport)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: `Invalid sport. Only team sports can have captains: ${teamSports.join(', ')}` 
+      })
+    }
+
+    // Read existing data
+    let students = []
+    if (fs.existsSync(studentsJsonPath)) {
+      const fileContent = fs.readFileSync(studentsJsonPath, 'utf8')
+      students = JSON.parse(fileContent)
+    }
+
+    // Find student
+    const studentIndex = students.findIndex(s => s.reg_number === reg_number)
+    if (studentIndex === -1) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Student not found' 
+      })
+    }
+
+    // Initialize captain_in array if it doesn't exist
+    if (!students[studentIndex].captain_in) {
+      students[studentIndex].captain_in = []
+    }
+
+    // Check if student is a captain for this sport
+    if (!students[studentIndex].captain_in.includes(sport)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: `Student is not a captain for ${sport}` 
+      })
+    }
+
+    // Check if student has created a team for this sport
+    if (students[studentIndex].participated_in && Array.isArray(students[studentIndex].participated_in)) {
+      const teamParticipation = students[studentIndex].participated_in.find(
+        p => p.sport === sport && p.team_name
+      )
+      
+      if (teamParticipation) {
+        return res.status(400).json({ 
+          success: false, 
+          error: `Cannot remove captain role. Student has already created a team (${teamParticipation.team_name}) for ${sport}. Please delete the team first.` 
+        })
+      }
+    }
+
+    // Remove sport from captain_in array
+    students[studentIndex].captain_in = students[studentIndex].captain_in.filter(
+      s => s !== sport
+    )
+
+    // Write back to file
+    fs.writeFileSync(studentsJsonPath, JSON.stringify(students, null, 2))
+
+    // Return student data (excluding password for security)
+    const { password: _, ...studentData } = students[studentIndex]
+
+    res.json({ 
+      success: true, 
+      message: `Captain role removed successfully for ${sport}`,
+      student: studentData
+    })
+  } catch (error) {
+    console.error('Error removing captain:', error)
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to remove captain',
+      details: error.message 
+    })
+  }
+})
+
+// API endpoint to get captains by sport
+app.get('/api/captains-by-sport', (req, res) => {
+  try {
+    // Read existing data
+    let students = []
+    if (fs.existsSync(studentsJsonPath)) {
+      const fileContent = fs.readFileSync(studentsJsonPath, 'utf8')
+      students = JSON.parse(fileContent)
+    }
+
+    // Filter out admin user
+    const nonAdminStudents = students.filter(s => s.reg_number !== '00000000000')
+
+    // Group captains by sport
+    const captainsBySport = {}
+
+    // Define team sports
+    const teamSports = [
+      'Cricket',
+      'Volleyball',
+      'Badminton',
+      'Table Tennis',
+      'Kabaddi',
+      'Relay 4×100 m',
+      'Relay 4×400 m',
+    ]
+
+    // Initialize all team sports
+    teamSports.forEach(sport => {
+      captainsBySport[sport] = []
+    })
+
+    // Find all captains
+    nonAdminStudents.forEach(student => {
+      if (student.captain_in && Array.isArray(student.captain_in)) {
+        student.captain_in.forEach(sport => {
+          if (teamSports.includes(sport)) {
+            if (!captainsBySport[sport]) {
+              captainsBySport[sport] = []
+            }
+            const { password: _, ...studentData } = student
+            captainsBySport[sport].push(studentData)
+          }
+        })
+      }
+    })
+
+    res.json({ 
+      success: true, 
+      captainsBySport 
+    })
+  } catch (error) {
+    console.error('Error fetching captains by sport:', error)
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to fetch captains by sport',
       details: error.message 
     })
   }
@@ -224,23 +451,58 @@ app.post('/api/validate-participations', (req, res) => {
         continue
       }
 
-      // Check maximum limit of 3 participations
-      // For captains: team events (as captain) + non-team events = maximum 3
+      // Check for duplicate sport entries in participated_in array (uniqueness check)
+      const sportSet = new Set(student.participated_in.map(p => p.sport))
+      if (sportSet.size !== student.participated_in.length) {
+        errors.push(`${student.full_name} (${reg_number}) has duplicate sport entries in participated_in array. Please fix the data first.`)
+        continue
+      }
+
+      // Check maximum limit: participated_in array can have maximum 10 unique entries (based on sport name)
+      const currentParticipationsCount = student.participated_in.length
+      if (currentParticipationsCount >= 10) {
+        errors.push(`${student.full_name} (${reg_number}) has reached maximum 10 participations (based on unique sport names). Please remove a participation first.`)
+        continue
+      }
+
+      // Count non-team participations (entries without team_name)
+      const nonTeamParticipations = student.participated_in.filter(
+        p => !p.team_name
+      ).length
+
+      // Count team participations where sport IS in captain_in array (these count towards captain limit)
+      const captainTeamParticipations = student.participated_in.filter(
+        p => p.team_name && 
+        student.captain_in && 
+        Array.isArray(student.captain_in) && 
+        student.captain_in.includes(p.sport)
+      ).length
+
+      // Get captain count
       const captainCount = student.captain_in && Array.isArray(student.captain_in) 
         ? student.captain_in.length 
         : 0
-      const currentParticipations = student.participated_in.length
       
-      // Total allowed = 3
-      // If they are captain in N sports, those count as N participations
-      if (currentParticipations + captainCount >= 3) {
-        const remainingSlots = 3 - captainCount
-        if (remainingSlots <= 0) {
-          errors.push(`${student.full_name} (${reg_number}) is a captain in ${captainCount} sport(s) and has reached maximum 3 participations. Cannot register for any more events.`)
-        } else {
-          errors.push(`${student.full_name} (${reg_number}) is a captain in ${captainCount} sport(s). You can only register for ${remainingSlots} non-team event(s).`)
+      // Check if this is a team event (has team_name in the request context)
+      // For team events: check if sport is in captain_in array
+      const isCaptainForSport = student.captain_in && 
+        Array.isArray(student.captain_in) && 
+        student.captain_in.includes(sport)
+      
+      if (isCaptainForSport) {
+        // This is a team event where the player IS a captain for this sport
+        // Check: team participations (for captain sports) should not exceed captain_in length
+        if (captainTeamParticipations >= captainCount) {
+          errors.push(`${student.full_name} (${reg_number}) has reached maximum team participations for captain sports (${captainCount}). Maximum team participations allowed for sports in captain_in array is equal to captain roles (${captainCount}).`)
+          continue
         }
-        continue
+      } else {
+        // This could be either:
+        // 1. A team event where the player is NOT a captain (allowed, no limit check)
+        // 2. A non-team event
+        // For non-team events: check (captain_in length + non-team participated_in) should not exceed 10
+        // Note: We can't distinguish here, so we'll check non-team limit in update-participation endpoint
+        // For team events with non-captain: no limit check needed
       }
     }
 
@@ -252,7 +514,14 @@ app.post('/api/validate-participations', (req, res) => {
 
     if (captainsInRequest.length > 1) {
       const captainNames = captainsInRequest.map(s => `${s.full_name} (${s.reg_number})`)
-      errors.push(`Multiple captains found in the same team registration: ${captainNames.join(', ')}. A team can only have one captain for ${sport}.`)
+      errors.push(`Multiple captains found in the same team registration: ${captainNames.join(', ')}. A team can only have exactly one captain for ${sport}.`)
+    }
+
+    // Validate that exactly one captain is in the team
+    if (captainsInRequest.length === 0) {
+      errors.push(`Team must have exactly one captain for ${sport}. At least one player in the team must be assigned as captain for this sport.`)
+    } else if (captainsInRequest.length !== 1) {
+      errors.push(`Team must have exactly one captain for ${sport}. Found ${captainsInRequest.length} captains.`)
     }
 
     if (errors.length > 0) {
@@ -377,7 +646,7 @@ app.post('/api/update-team-participation', (req, res) => {
     }
 
     // Check for multiple captains in the same team
-    // A team can only have one captain for a specific sport
+    // A team can only have exactly one captain for a specific sport
     const captainsInTeam = playerData.filter(p => 
       p.captain_in && 
       Array.isArray(p.captain_in) && 
@@ -388,7 +657,15 @@ app.post('/api/update-team-participation', (req, res) => {
       const captainNames = captainsInTeam.map(p => `${p.full_name} (${p.reg_number})`)
       return res.status(400).json({ 
         success: false, 
-        error: `Multiple captains found in the same team: ${captainNames.join(', ')}. A team can only have one captain for ${sport}.` 
+        error: `Multiple captains found in the same team: ${captainNames.join(', ')}. A team can only have exactly one captain for ${sport}.` 
+      })
+    }
+
+    // Validate that exactly one captain is in the team
+    if (captainsInTeam.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        error: `Team must have exactly one captain for ${sport}. At least one player in the team must be assigned as captain for this sport.` 
       })
     }
 
@@ -436,6 +713,20 @@ app.post('/api/update-team-participation', (req, res) => {
         students[studentIndex].participated_in = []
       }
 
+      // Check for duplicate sport entries in participated_in array (uniqueness check)
+      const sportSet = new Set(students[studentIndex].participated_in.map(p => p.sport))
+      if (sportSet.size !== students[studentIndex].participated_in.length) {
+        errors.push(`${students[studentIndex].full_name} (${reg_number}) has duplicate sport entries in participated_in array. Please fix the data first.`)
+        continue
+      }
+
+      // Check maximum limit: participated_in array can have maximum 10 unique entries (based on sport name)
+      const currentParticipationsCount = students[studentIndex].participated_in.length
+      if (currentParticipationsCount >= 10) {
+        errors.push(`${students[studentIndex].full_name} (${reg_number}) has reached maximum 10 participations (based on unique sport names). Please remove a participation first.`)
+        continue
+      }
+
       // Check if already participated in this sport (for team events, player can only be in one team per sport)
       const existingParticipation = students[studentIndex].participated_in.find(
         p => p.sport === sport
@@ -459,14 +750,33 @@ app.post('/api/update-team-participation', (req, res) => {
         continue
       }
 
-      // Check maximum limit of 3 participations
-      // For team events: current participations + this new team participation should be <= 3
-      // Note: Team events count as 1 participation each
-      const currentParticipations = students[studentIndex].participated_in.length
-      if (currentParticipations >= 3) {
-        errors.push(`${students[studentIndex].full_name} (${reg_number}) has reached maximum 3 participations`)
-        continue
+      // Check if this player is a captain for this sport
+      const isCaptainForSport = students[studentIndex].captain_in && 
+        Array.isArray(students[studentIndex].captain_in) && 
+        students[studentIndex].captain_in.includes(sport)
+      
+      // Count team participations where sport IS in captain_in array (these count towards captain limit)
+      const captainTeamParticipations = students[studentIndex].participated_in.filter(
+        p => p.team_name && 
+        students[studentIndex].captain_in && 
+        Array.isArray(students[studentIndex].captain_in) && 
+        students[studentIndex].captain_in.includes(p.sport)
+      ).length
+
+      // Get captain count
+      const captainCount = students[studentIndex].captain_in && Array.isArray(students[studentIndex].captain_in) 
+        ? students[studentIndex].captain_in.length 
+        : 0
+
+      // Only check limit if this sport IS in captain_in array
+      // If player is a captain for this sport, check: team participations (for captain sports) should not exceed captain_in length
+      if (isCaptainForSport) {
+        if (captainTeamParticipations >= captainCount) {
+          errors.push(`${students[studentIndex].full_name} (${reg_number}) has reached maximum team participations for captain sports (${captainCount}). Maximum team participations allowed for sports in captain_in array is equal to captain roles (${captainCount}).`)
+          continue
+        }
       }
+      // If player is NOT a captain for this sport, they can still join the team (no limit check)
 
       // Add sport to participated_in array with team_name
       students[studentIndex].participated_in.push({ sport, team_name })
@@ -551,6 +861,24 @@ app.post('/api/update-participation', (req, res) => {
       students[studentIndex].participated_in = []
     }
 
+    // Check for duplicate sport entries in participated_in array (uniqueness check)
+    const sportSet = new Set(students[studentIndex].participated_in.map(p => p.sport))
+    if (sportSet.size !== students[studentIndex].participated_in.length) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'participated_in array contains duplicate sport entries. Please fix the data first.' 
+      })
+    }
+
+    // Check maximum limit: participated_in array can have maximum 10 unique entries (based on sport name)
+    const currentParticipationsCount = students[studentIndex].participated_in.length
+    if (currentParticipationsCount >= 10) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Maximum 10 participations allowed (based on unique sport names). Please remove a participation first.' 
+      })
+    }
+
     // Check if already participated in this sport (same sport cannot be participated twice)
     const existingParticipation = students[studentIndex].participated_in.find(
       p => p.sport === sport
@@ -563,28 +891,28 @@ app.post('/api/update-participation', (req, res) => {
       })
     }
 
-    // Check maximum limit of 3 participations
-    // For captains: team events (as captain) + non-team events = maximum 3
-    // Calculate: current participations + captain_in count (for team sports they'll participate in)
+    // Count non-team participations (entries without team_name)
+    const nonTeamParticipations = students[studentIndex].participated_in.filter(
+      p => !p.team_name
+    ).length
+
+    // Get captain count
     const captainCount = students[studentIndex].captain_in && Array.isArray(students[studentIndex].captain_in) 
       ? students[studentIndex].captain_in.length 
       : 0
-    const currentParticipations = students[studentIndex].participated_in.length
     
-    // Total allowed = 3
-    // If they are captain in N sports, those count as N participations
-    // So: current participations + captain_in count should be < 3 to allow adding a non-team event
-    if (currentParticipations + captainCount >= 3) {
-      const remainingSlots = 3 - captainCount
+    // Check maximum limit: (captain_in length + non-team participated_in) should not exceed 10
+    if (captainCount + nonTeamParticipations >= 10) {
+      const remainingSlots = 10 - captainCount
       if (remainingSlots <= 0) {
         return res.status(400).json({ 
           success: false, 
-          error: `Maximum 3 participations allowed. You are a captain in ${captainCount} sport(s). You cannot register for any non-team events.` 
+          error: `Maximum limit reached. You are a captain in ${captainCount} sport(s). You cannot register for any non-team events. Total (captain roles + non-team participations) cannot exceed 10.` 
         })
       } else {
         return res.status(400).json({ 
           success: false, 
-          error: `Maximum 3 participations allowed. You are a captain in ${captainCount} sport(s). You can only register for ${remainingSlots} non-team event(s).` 
+          error: `Maximum limit reached. You are a captain in ${captainCount} sport(s) and have ${nonTeamParticipations} non-team participation(s). You can only register for ${remainingSlots} more non-team event(s). Total (captain roles + non-team participations) cannot exceed 10.` 
         })
       }
     }
@@ -938,6 +1266,80 @@ app.post('/api/save-students', (req, res) => {
   }
 })
 
+// API endpoint to remove participation for non-team events
+app.delete('/api/remove-participation', (req, res) => {
+  try {
+    let { reg_number, sport } = req.body
+
+    // Trim fields
+    reg_number = reg_number?.trim()
+    sport = sport?.trim()
+
+    // Validate required fields
+    if (!reg_number || !sport) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Registration number and sport are required' 
+      })
+    }
+
+    // Read existing data
+    let students = []
+    if (fs.existsSync(studentsJsonPath)) {
+      const fileContent = fs.readFileSync(studentsJsonPath, 'utf8')
+      students = JSON.parse(fileContent)
+    }
+
+    // Find student
+    const studentIndex = students.findIndex(s => s.reg_number === reg_number)
+    if (studentIndex === -1) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Student not found' 
+      })
+    }
+
+    // Initialize participated_in array if it doesn't exist
+    if (!students[studentIndex].participated_in) {
+      students[studentIndex].participated_in = []
+    }
+
+    // Find the participation entry for this sport (non-team event - no team_name)
+    const participationIndex = students[studentIndex].participated_in.findIndex(
+      p => p.sport === sport && !p.team_name
+    )
+
+    if (participationIndex === -1) {
+      return res.status(404).json({ 
+        success: false, 
+        error: `Student is not registered for ${sport} as a non-team event` 
+      })
+    }
+
+    // Remove the participation entry
+    students[studentIndex].participated_in.splice(participationIndex, 1)
+
+    // Write back to file
+    fs.writeFileSync(studentsJsonPath, JSON.stringify(students, null, 2))
+
+    // Return student data (excluding password for security)
+    const { password: _, ...studentData } = students[studentIndex]
+
+    res.json({ 
+      success: true, 
+      message: `Participation removed successfully for ${sport}`,
+      student: studentData
+    })
+  } catch (error) {
+    console.error('Error removing participation:', error)
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to remove participation',
+      details: error.message 
+    })
+  }
+})
+
 // API endpoint to get all teams for a specific sport
 app.get('/api/teams/:sport', (req, res) => {
   try {
@@ -1076,6 +1478,451 @@ app.get('/api/participants/:sport', (req, res) => {
     res.status(500).json({ 
       success: false, 
       error: 'Failed to get participants',
+      details: error.message 
+    })
+  }
+})
+
+// API endpoint to update/replace a player in a team
+app.post('/api/update-team-player', (req, res) => {
+  try {
+    let { team_name, sport, old_reg_number, new_reg_number } = req.body
+
+    // Trim fields
+    sport = sport?.trim()
+    team_name = team_name?.trim()
+    old_reg_number = old_reg_number?.trim()
+    new_reg_number = new_reg_number?.trim()
+
+    // Validate required fields
+    if (!team_name || !sport || !old_reg_number || !new_reg_number) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Team name, sport, old registration number, and new registration number are required' 
+      })
+    }
+
+    // Read existing data
+    let students = []
+    if (fs.existsSync(studentsJsonPath)) {
+      const fileContent = fs.readFileSync(studentsJsonPath, 'utf8')
+      students = JSON.parse(fileContent)
+    }
+
+    // Find old player
+    const oldPlayerIndex = students.findIndex(s => s.reg_number === old_reg_number)
+    if (oldPlayerIndex === -1) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Old player not found' 
+      })
+    }
+
+    // Find new player
+    const newPlayerIndex = students.findIndex(s => s.reg_number === new_reg_number)
+    if (newPlayerIndex === -1) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'New player not found' 
+      })
+    }
+
+    // Check if old player is in the team
+    const oldPlayer = students[oldPlayerIndex]
+    if (!oldPlayer.participated_in || !Array.isArray(oldPlayer.participated_in)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Old player is not registered for any sport' 
+      })
+    }
+
+    const oldPlayerParticipation = oldPlayer.participated_in.find(
+      p => p.sport === sport && p.team_name === team_name
+    )
+
+    if (!oldPlayerParticipation) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Old player is not in this team' 
+      })
+    }
+
+    // Get all current team members (excluding the old player)
+    const currentTeamMembers = students.filter(s => {
+      if (!s.participated_in || !Array.isArray(s.participated_in)) {
+        return false
+      }
+      const participation = s.participated_in.find(
+        p => p.sport === sport && p.team_name === team_name
+      )
+      return !!participation && s.reg_number !== old_reg_number
+    })
+
+    // Validate new player
+    const newPlayer = students[newPlayerIndex]
+
+    // Check if new player is already in this team
+    if (currentTeamMembers.some(m => m.reg_number === new_reg_number)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'New player is already in this team' 
+      })
+    }
+
+    // Check if new player has already participated in this sport
+    if (newPlayer.participated_in && Array.isArray(newPlayer.participated_in)) {
+      const existingParticipation = newPlayer.participated_in.find(
+        p => p.sport === sport
+      )
+      if (existingParticipation) {
+        if (existingParticipation.team_name) {
+          return res.status(400).json({ 
+            success: false, 
+            error: `New player is already in a team (${existingParticipation.team_name}) for ${sport}. A player can only belong to one team per sport.` 
+          })
+        } else {
+          return res.status(400).json({ 
+            success: false, 
+            error: `New player is already registered for ${sport}` 
+          })
+        }
+      }
+    }
+
+    // Check for duplicate sport entries in participated_in array (uniqueness check)
+    if (newPlayer.participated_in && Array.isArray(newPlayer.participated_in)) {
+      const sportSet = new Set(newPlayer.participated_in.map(p => p.sport))
+      if (sportSet.size !== newPlayer.participated_in.length) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'New player has duplicate sport entries in participated_in array. Please fix the data first.' 
+        })
+      }
+
+      // Check maximum limit: participated_in array can have maximum 10 unique entries (based on sport name)
+      if (newPlayer.participated_in.length >= 10) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'New player has reached maximum 10 participations (based on unique sport names). Please remove a participation first.' 
+        })
+      }
+    }
+
+    // Count non-team participations (entries without team_name)
+    const nonTeamParticipations = newPlayer.participated_in && Array.isArray(newPlayer.participated_in)
+      ? newPlayer.participated_in.filter(p => !p.team_name).length
+      : 0
+
+    // Check if new player is a captain for this sport
+    const isNewPlayerCaptainForSport = newPlayer.captain_in && 
+      Array.isArray(newPlayer.captain_in) && 
+      newPlayer.captain_in.includes(sport)
+
+    // Count team participations where sport IS in captain_in array (these count towards captain limit)
+    const captainTeamParticipations = newPlayer.participated_in && Array.isArray(newPlayer.participated_in)
+      ? newPlayer.participated_in.filter(
+          p => p.team_name && 
+          newPlayer.captain_in && 
+          Array.isArray(newPlayer.captain_in) && 
+          newPlayer.captain_in.includes(p.sport)
+        ).length
+      : 0
+
+    // Get captain count
+    const captainCount = newPlayer.captain_in && Array.isArray(newPlayer.captain_in) 
+      ? newPlayer.captain_in.length 
+      : 0
+
+    // Only check limit if new player IS a captain for this sport
+    // If new player is a captain for this sport, check: team participations (for captain sports) should not exceed captain_in length
+    if (isNewPlayerCaptainForSport) {
+      if (captainTeamParticipations >= captainCount) {
+        return res.status(400).json({ 
+          success: false, 
+          error: `New player has reached maximum team participations for captain sports (${captainCount}). Maximum team participations allowed for sports in captain_in array is equal to captain roles (${captainCount}).` 
+        })
+      }
+    }
+    // If new player is NOT a captain for this sport, they can still join the team (no limit check)
+
+    // Check maximum limit: (captain_in length + non-team participated_in) should not exceed 10
+    if (captainCount + nonTeamParticipations >= 10) {
+      return res.status(400).json({ 
+        success: false, 
+        error: `New player has reached maximum limit. Total (captain roles + non-team participations) cannot exceed 10. Current: ${captainCount} captain role(s) + ${nonTeamParticipations} non-team participation(s).` 
+      })
+    }
+
+    // Validate gender match with team
+    if (currentTeamMembers.length > 0) {
+      const teamGender = currentTeamMembers[0].gender
+      if (newPlayer.gender !== teamGender) {
+        return res.status(400).json({ 
+          success: false, 
+          error: `Gender mismatch: New player must have the same gender (${teamGender}) as other team members.` 
+        })
+      }
+
+      // Validate year match with team
+      const teamYear = currentTeamMembers[0].year
+      if (newPlayer.year !== teamYear) {
+        return res.status(400).json({ 
+          success: false, 
+          error: `Year mismatch: New player must be in the same year (${teamYear}) as other team members.` 
+        })
+      }
+    }
+
+    // Check for multiple captains in the team
+    const isNewPlayerCaptain = newPlayer.captain_in && 
+      Array.isArray(newPlayer.captain_in) && 
+      newPlayer.captain_in.includes(sport)
+
+    const existingCaptains = currentTeamMembers.filter(s => 
+      s.captain_in && 
+      Array.isArray(s.captain_in) && 
+      s.captain_in.includes(sport)
+    )
+
+    if (existingCaptains.length > 0 && isNewPlayerCaptain) {
+      const existingCaptainName = existingCaptains[0].full_name
+      return res.status(400).json({ 
+        success: false, 
+        error: `Team already has a captain (${existingCaptainName}) for ${sport}. Cannot add another captain. A team can only have one captain.` 
+      })
+    }
+
+    // Remove old player from team
+    const oldPlayerPartIndex = oldPlayer.participated_in.findIndex(
+      p => p.sport === sport && p.team_name === team_name
+    )
+    if (oldPlayerPartIndex !== -1) {
+      oldPlayer.participated_in.splice(oldPlayerPartIndex, 1)
+    }
+
+    // Add new player to team
+    if (!newPlayer.participated_in) {
+      newPlayer.participated_in = []
+    }
+    newPlayer.participated_in.push({ sport, team_name })
+
+    // Write back to file
+    fs.writeFileSync(studentsJsonPath, JSON.stringify(students, null, 2))
+
+    // Return updated data
+    const { password: _, ...newPlayerData } = newPlayer
+
+    res.json({ 
+      success: true, 
+      message: `Player updated successfully in team ${team_name}`,
+      old_player: { reg_number: old_reg_number, full_name: oldPlayer.full_name },
+      new_player: newPlayerData
+    })
+  } catch (error) {
+    console.error('Error updating team player:', error)
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to update team player',
+      details: error.message 
+    })
+  }
+})
+
+// API endpoint to delete a team (remove all players' associations to the team)
+app.delete('/api/delete-team', (req, res) => {
+  try {
+    let { team_name, sport } = req.body
+
+    // Trim fields
+    sport = sport?.trim()
+    team_name = team_name?.trim()
+
+    // Validate required fields
+    if (!team_name || !sport) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Team name and sport are required' 
+      })
+    }
+
+    // Read existing data
+    let students = []
+    if (fs.existsSync(studentsJsonPath)) {
+      const fileContent = fs.readFileSync(studentsJsonPath, 'utf8')
+      students = JSON.parse(fileContent)
+    }
+
+    // Find all students who are in this team
+    const teamMembers = []
+    let deletedCount = 0
+
+    for (let i = 0; i < students.length; i++) {
+      const student = students[i]
+      if (!student.participated_in || !Array.isArray(student.participated_in)) {
+        continue
+      }
+
+      // Find participation in this team
+      const participationIndex = student.participated_in.findIndex(
+        p => p.sport === sport && p.team_name === team_name
+      )
+
+      if (participationIndex !== -1) {
+        // Remove this participation
+        student.participated_in.splice(participationIndex, 1)
+        teamMembers.push({
+          reg_number: student.reg_number,
+          full_name: student.full_name
+        })
+        deletedCount++
+      }
+    }
+
+    if (deletedCount === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Team not found or has no members' 
+      })
+    }
+
+    // Write back to file
+    fs.writeFileSync(studentsJsonPath, JSON.stringify(students, null, 2))
+
+    res.json({ 
+      success: true, 
+      message: `Team "${team_name}" deleted successfully. Removed ${deletedCount} player(s) from the team.`,
+      deleted_count: deletedCount,
+      team_members: teamMembers
+    })
+  } catch (error) {
+    console.error('Error deleting team:', error)
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to delete team',
+      details: error.message 
+    })
+  }
+})
+
+// API endpoint to update student data
+app.put('/api/update-student', (req, res) => {
+  try {
+    let { reg_number, full_name, gender, department_branch, year, mobile_number, email_id } = req.body
+
+    // Trim all string fields
+    reg_number = reg_number?.trim()
+    full_name = full_name?.trim()
+    gender = gender?.trim()
+    department_branch = department_branch?.trim()
+    year = year?.trim()
+    mobile_number = mobile_number?.trim()
+    email_id = email_id?.trim()
+
+    // Validate required fields (password is not required for update)
+    if (!reg_number || !full_name || !gender || !department_branch || !year || !mobile_number || !email_id) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing required fields' 
+      })
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email_id)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid email format' 
+      })
+    }
+
+    // Validate phone number (should be numeric and reasonable length)
+    const phoneRegex = /^[0-9]{10}$/
+    if (!phoneRegex.test(mobile_number)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid mobile number. Must be 10 digits.' 
+      })
+    }
+
+    // Validate gender
+    const validGenders = ['Male', 'Female']
+    if (!validGenders.includes(gender)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: `Invalid gender. Must be one of: ${validGenders.join(', ')}` 
+      })
+    }
+
+    // Validate department
+    const validDepartments = ['CSE', 'CSE (AI)', 'ECE', 'EE', 'CE', 'ME', 'MTE']
+    if (!validDepartments.includes(department_branch)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: `Invalid department/branch. Must be one of: ${validDepartments.join(', ')}` 
+      })
+    }
+
+    // Validate year
+    const validYears = ['1st Year (2025)', '2nd Year (2024)', '3rd Year (2023)', '4th Year (2022)']
+    if (!validYears.includes(year)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: `Invalid year. Must be one of: ${validYears.join(', ')}` 
+      })
+    }
+
+    // Read existing data
+    let students = []
+    if (fs.existsSync(studentsJsonPath)) {
+      const fileContent = fs.readFileSync(studentsJsonPath, 'utf8')
+      students = JSON.parse(fileContent)
+    }
+
+    // Find student with matching reg_number
+    const studentIndex = students.findIndex(s => s.reg_number === reg_number)
+    if (studentIndex === -1) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Student not found' 
+      })
+    }
+
+    // Preserve existing password, participated_in, and captain_in
+    const existingStudent = students[studentIndex]
+    const updatedStudent = {
+      ...existingStudent,
+      reg_number, // Keep original reg_number (cannot be changed)
+      full_name,
+      gender,
+      department_branch,
+      year,
+      mobile_number,
+      email_id,
+      // Preserve password, participated_in, and captain_in
+      password: existingStudent.password,
+      participated_in: existingStudent.participated_in || [],
+      captain_in: existingStudent.captain_in || [],
+    }
+
+    // Update student in array
+    students[studentIndex] = updatedStudent
+
+    // Write back to file
+    fs.writeFileSync(studentsJsonPath, JSON.stringify(students, null, 2))
+
+    // Return updated student (excluding password)
+    const { password: _, ...studentData } = updatedStudent
+
+    res.json({ 
+      success: true, 
+      message: 'Student data updated successfully',
+      student: studentData
+    })
+  } catch (error) {
+    console.error('Error updating student data:', error)
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to update student data',
       details: error.message 
     })
   }

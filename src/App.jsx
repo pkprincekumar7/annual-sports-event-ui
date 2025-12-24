@@ -5,8 +5,10 @@ import SportsSection from './components/SportsSection'
 import RegisterModal from './components/RegisterModal'
 import LoginModal from './components/LoginModal'
 import AddCaptainModal from './components/AddCaptainModal'
+import RemoveCaptainModal from './components/RemoveCaptainModal'
 import TeamDetailsModal from './components/TeamDetailsModal'
 import ParticipantDetailsModal from './components/ParticipantDetailsModal'
+import StudentListModal from './components/StudentListModal'
 import AboutSection from './components/AboutSection'
 import Footer from './components/Footer'
 import StatusPopup from './components/StatusPopup'
@@ -15,8 +17,10 @@ function App() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
   const [isAddCaptainModalOpen, setIsAddCaptainModalOpen] = useState(false)
+  const [isRemoveCaptainModalOpen, setIsRemoveCaptainModalOpen] = useState(false)
   const [isTeamDetailsModalOpen, setIsTeamDetailsModalOpen] = useState(false)
   const [isParticipantDetailsModalOpen, setIsParticipantDetailsModalOpen] = useState(false)
+  const [isStudentListModalOpen, setIsStudentListModalOpen] = useState(false)
   const [selectedSport, setSelectedSport] = useState(null)
   const [statusPopup, setStatusPopup] = useState({ show: false, message: '', type: 'success' })
   const loginSuccessRef = useRef(false) // Track if login was successful to preserve selectedSport
@@ -161,6 +165,8 @@ function App() {
             onLoginClick={() => setIsLoginModalOpen(true)}
             onLogout={handleLogout}
             onAddCaptainClick={() => setIsAddCaptainModalOpen(true)}
+            onRemoveCaptainClick={() => setIsRemoveCaptainModalOpen(true)}
+            onListStudentsClick={() => setIsStudentListModalOpen(true)}
             loggedInUser={loggedInUser}
           />
           <SportsSection onSportClick={handleSportClick} loggedInUser={loggedInUser} />
@@ -185,6 +191,11 @@ function App() {
         onClose={() => setIsAddCaptainModalOpen(false)}
         onStatusPopup={showStatusPopup}
       />
+      <RemoveCaptainModal
+        isOpen={isRemoveCaptainModalOpen}
+        onClose={() => setIsRemoveCaptainModalOpen(false)}
+        onStatusPopup={showStatusPopup}
+      />
       <TeamDetailsModal
         isOpen={isTeamDetailsModalOpen}
         onClose={() => {
@@ -193,6 +204,7 @@ function App() {
         }}
         sport={selectedSport?.name}
         loggedInUser={loggedInUser}
+        onStatusPopup={showStatusPopup}
       />
       <ParticipantDetailsModal
         isOpen={isParticipantDetailsModalOpen}
@@ -201,6 +213,13 @@ function App() {
           setSelectedSport(null)
         }}
         sport={selectedSport?.name}
+        loggedInUser={loggedInUser}
+        onStatusPopup={showStatusPopup}
+      />
+      <StudentListModal
+        isOpen={isStudentListModalOpen}
+        onClose={() => setIsStudentListModalOpen(false)}
+        onStatusPopup={showStatusPopup}
       />
       <AboutSection />
       <Footer />
