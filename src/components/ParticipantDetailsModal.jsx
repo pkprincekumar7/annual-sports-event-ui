@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { fetchWithAuth } from '../utils/api'
 
 function ParticipantDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup }) {
   const [participants, setParticipants] = useState([])
@@ -39,7 +40,7 @@ function ParticipantDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatu
       const url = `http://localhost:3001/api/participants/${encodedSport}`
       console.log('Fetching participants for sport:', sport, 'URL:', url)
       
-      const response = await fetch(url)
+      const response = await fetchWithAuth(url)
       
       if (!response.ok) {
         // Try to get error message from response
@@ -94,11 +95,8 @@ function ParticipantDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatu
     setDeleting(true)
     setShowDeleteConfirm(false)
     try {
-      const response = await fetch('http://localhost:3001/api/remove-participation', {
+      const response = await fetchWithAuth('http://localhost:3001/api/remove-participation', {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           reg_number: participantToDelete.reg_number,
           sport: sport,
@@ -141,7 +139,7 @@ function ParticipantDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatu
     setParticipantToDelete(null)
   }
 
-  const isAdmin = loggedInUser?.reg_number === '00000000000'
+  const isAdmin = loggedInUser?.reg_number === 'admin'
 
   if (!isOpen) return null
 

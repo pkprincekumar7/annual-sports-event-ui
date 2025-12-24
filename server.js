@@ -4,6 +4,7 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import XLSX from 'xlsx'
+import jwt from 'jsonwebtoken'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -11,10 +12,74 @@ const __dirname = path.dirname(__filename)
 const app = express()
 const PORT = 3001
 
+// JWT Secret (in production, use environment variable)
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production'
+const JWT_EXPIRES_IN = '24h' // Token expires in 24 hours
+
+// Disable ETag generation (Express default)
+app.set('etag', false)
+
 // Middleware
 app.use(cors())
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
+
+// Disable caching for all API responses
+app.use('/api', (req, res, next) => {
+  // Remove conditional request headers that cause 304 responses
+  delete req.headers['if-modified-since']
+  delete req.headers['if-none-match']
+  delete req.headers['if-match']
+  delete req.headers['if-unmodified-since']
+  
+  // Remove any existing ETag or Last-Modified headers from response
+  res.removeHeader('ETag')
+  res.removeHeader('Last-Modified')
+  
+  // Set no-cache headers to prevent 304 responses
+  res.set({
+    'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+    'Pragma': 'no-cache',
+    'Expires': '0'
+  })
+  
+  next()
+})
+
+// JWT Authentication Middleware
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization']
+  const token = authHeader && authHeader.split(' ')[1] // Bearer TOKEN
+
+  if (!token) {
+    return res.status(401).json({ 
+      success: false, 
+      error: 'Access token required. Please login first.' 
+    })
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(403).json({ 
+        success: false, 
+        error: 'Invalid or expired token. Please login again.' 
+      })
+    }
+    req.user = decoded // Attach user info to request
+    next()
+  })
+}
+
+// Admin-only Middleware (must be used after authenticateToken)
+const requireAdmin = (req, res, next) => {
+  if (req.user.reg_number !== 'admin') {
+    return res.status(403).json({ 
+      success: false, 
+      error: 'Admin access required' 
+    })
+  }
+  next()
+}
 
 // Ensure json_store directory exists
 const jsonStorePath = path.join(__dirname, 'public', 'json_store')
@@ -29,8 +94,8 @@ if (!fs.existsSync(playersJsonPath)) {
   fs.writeFileSync(playersJsonPath, JSON.stringify([], null, 2))
 }
 
-// API endpoint to get all players
-app.get('/api/players', (req, res) => {
+// API endpoint to get all players (requires authentication)
+app.get('/api/players', authenticateToken, (req, res) => {
   try {
     let players = []
     if (fs.existsSync(playersJsonPath)) {
@@ -48,8 +113,8 @@ app.get('/api/players', (req, res) => {
   }
 })
 
-// API endpoint to get team sports (for captain assignment)
-app.get('/api/sports', (req, res) => {
+// API endpoint to get team sports (for captain assignment - admin only)
+app.get('/api/sports', authenticateToken, requireAdmin, (req, res) => {
   try {
     // Only Team Events can have captains
     const teamSports = [
@@ -72,8 +137,8 @@ app.get('/api/sports', (req, res) => {
   }
 })
 
-// API endpoint to add captain
-app.post('/api/add-captain', (req, res) => {
+// API endpoint to add captain (Admin only)
+app.post('/api/add-captain', authenticateToken, requireAdmin, (req, res) => {
   try {
     let { reg_number, sport } = req.body
 
@@ -256,7 +321,7 @@ app.post('/api/add-captain', (req, res) => {
 })
 
 // API endpoint to remove captain
-app.delete('/api/remove-captain', (req, res) => {
+app.delete('/api/remove-captain', authenticateToken, requireAdmin, (req, res) => {
   try {
     let { reg_number, sport } = req.body
 
@@ -359,7 +424,7 @@ app.delete('/api/remove-captain', (req, res) => {
 })
 
 // API endpoint to get captains by sport
-app.get('/api/captains-by-sport', (req, res) => {
+app.get('/api/captains-by-sport', authenticateToken, requireAdmin, (req, res) => {
   try {
     // Read existing data
     let players = []
@@ -369,7 +434,7 @@ app.get('/api/captains-by-sport', (req, res) => {
     }
 
     // Filter out admin user
-    const nonAdminPlayers = players.filter(p => p.reg_number !== '00000000000')
+    const nonAdminPlayers = players.filter(p => p.reg_number !== 'admin')
 
     // Group captains by sport
     const captainsBySport = {}
@@ -420,7 +485,7 @@ app.get('/api/captains-by-sport', (req, res) => {
 })
 
 // API endpoint to validate participations before team registration
-app.post('/api/validate-participations', (req, res) => {
+app.post('/api/validate-participations', authenticateToken, (req, res) => {
   try {
     let { reg_numbers, sport } = req.body
 
@@ -550,6 +615,24 @@ app.post('/api/validate-participations', (req, res) => {
       errors.push(`Team must have exactly one captain for ${sport}. Found ${captainsInRequest.length} captains.`)
     }
 
+    // Validate that the logged-in user (from JWT token) is the captain for this sport
+    // Only the captain assigned to a sport can create teams for that sport
+    const loggedInUserRegNumber = req.user?.reg_number
+    if (loggedInUserRegNumber) {
+      const loggedInUserInRequest = players.find(p => p.reg_number === loggedInUserRegNumber)
+      if (!loggedInUserInRequest) {
+        errors.push(`You must be included in the team to create it.`)
+      } else {
+        const isLoggedInUserCaptain = loggedInUserInRequest.captain_in && 
+          Array.isArray(loggedInUserInRequest.captain_in) && 
+          loggedInUserInRequest.captain_in.includes(sport)
+        
+        if (!isLoggedInUserCaptain) {
+          errors.push(`You can only create teams for sports where you are assigned as captain. You are not assigned as captain for ${sport}.`)
+        }
+      }
+    }
+
     if (errors.length > 0) {
       return res.status(400).json({ 
         success: false, 
@@ -572,7 +655,7 @@ app.post('/api/validate-participations', (req, res) => {
 })
 
 // API endpoint to update participated_in field for team events
-app.post('/api/update-team-participation', (req, res) => {
+app.post('/api/update-team-participation', authenticateToken, (req, res) => {
   try {
     let { reg_numbers, sport, team_name } = req.body
 
@@ -693,6 +776,30 @@ app.post('/api/update-team-participation', (req, res) => {
         success: false, 
         error: `Team must have exactly one captain for ${sport}. At least one player in the team must be assigned as captain for this sport.` 
       })
+    }
+
+    // Validate that the logged-in user (from JWT token) is the captain for this sport
+    // Only the captain assigned to a sport can create teams for that sport
+    const loggedInUserRegNumber = req.user?.reg_number
+    if (loggedInUserRegNumber) {
+      const loggedInUserInTeam = playerData.find(p => p.reg_number === loggedInUserRegNumber)
+      if (!loggedInUserInTeam) {
+        return res.status(403).json({ 
+          success: false, 
+          error: `You must be included in the team to create it.` 
+        })
+      }
+      
+      const isLoggedInUserCaptain = loggedInUserInTeam.captain_in && 
+        Array.isArray(loggedInUserInTeam.captain_in) && 
+        loggedInUserInTeam.captain_in.includes(sport)
+      
+      if (!isLoggedInUserCaptain) {
+        return res.status(403).json({ 
+          success: false, 
+          error: `You can only create teams for sports where you are assigned as captain. You are not assigned as captain for ${sport}.` 
+        })
+      }
     }
 
     // Check if there's already a captain in the existing team (if team already exists)
@@ -836,7 +943,7 @@ app.post('/api/update-team-participation', (req, res) => {
 })
 
 // API endpoint to update participated_in field
-app.post('/api/update-participation', (req, res) => {
+app.post('/api/update-participation', authenticateToken, (req, res) => {
   try {
     let { reg_number, sport } = req.body
 
@@ -1017,13 +1124,23 @@ app.post('/api/login', (req, res) => {
       player.captain_in = []
     }
 
-    // Return player data (excluding password for security)
+    // Generate JWT token
+    const tokenPayload = {
+      reg_number: player.reg_number,
+      full_name: player.full_name,
+      isAdmin: player.reg_number === 'admin'
+    }
+
+    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN })
+
+    // Return player data (excluding password for security) and token
     const { password: _, ...playerData } = player
 
     res.json({ 
       success: true, 
       message: 'Login successful',
-      player: playerData
+      player: playerData,
+      token: token
     })
   } catch (error) {
     console.error('Error during login:', error)
@@ -1293,7 +1410,7 @@ app.post('/api/save-players', (req, res) => {
 })
 
 // API endpoint to remove participation for non-team events
-app.delete('/api/remove-participation', (req, res) => {
+app.delete('/api/remove-participation', authenticateToken, requireAdmin, (req, res) => {
   try {
     let { reg_number, sport } = req.body
 
@@ -1367,7 +1484,7 @@ app.delete('/api/remove-participation', (req, res) => {
 })
 
 // API endpoint to get all teams for a specific sport
-app.get('/api/teams/:sport', (req, res) => {
+app.get('/api/teams/:sport', authenticateToken, (req, res) => {
   try {
     // Decode the sport name from URL parameter
     let sport = decodeURIComponent(req.params.sport)
@@ -1388,7 +1505,7 @@ app.get('/api/teams/:sport', (req, res) => {
     }
 
     // Filter out admin user
-    const nonAdminPlayers = players.filter(p => p.reg_number !== '00000000000')
+    const nonAdminPlayers = players.filter(p => p.reg_number !== 'admin')
 
     // Group players by team name for the specified sport
     const teamsMap = new Map()
@@ -1447,7 +1564,7 @@ app.get('/api/teams/:sport', (req, res) => {
 })
 
 // API endpoint to get all participants for a specific sport (non-team events)
-app.get('/api/participants/:sport', (req, res) => {
+app.get('/api/participants/:sport', authenticateToken, requireAdmin, (req, res) => {
   try {
     // Decode the sport name from URL parameter
     let sport = decodeURIComponent(req.params.sport)
@@ -1468,7 +1585,7 @@ app.get('/api/participants/:sport', (req, res) => {
     }
 
     // Filter out admin user
-    const nonAdminPlayers = players.filter(p => p.reg_number !== '00000000000')
+    const nonAdminPlayers = players.filter(p => p.reg_number !== 'admin')
 
     // Find all players who have participated in this sport (non-team events don't have team_name)
     const participants = []
@@ -1510,7 +1627,7 @@ app.get('/api/participants/:sport', (req, res) => {
 })
 
 // API endpoint to update/replace a player in a team
-app.post('/api/update-team-player', (req, res) => {
+app.post('/api/update-team-player', authenticateToken, requireAdmin, (req, res) => {
   try {
     let { team_name, sport, old_reg_number, new_reg_number } = req.body
 
@@ -1755,7 +1872,7 @@ app.post('/api/update-team-player', (req, res) => {
 })
 
 // API endpoint to delete a team (remove all players' associations to the team)
-app.delete('/api/delete-team', (req, res) => {
+app.delete('/api/delete-team', authenticateToken, requireAdmin, (req, res) => {
   try {
     let { team_name, sport } = req.body
 
@@ -1831,7 +1948,7 @@ app.delete('/api/delete-team', (req, res) => {
 })
 
 // API endpoint to update player data
-app.put('/api/update-player', (req, res) => {
+app.put('/api/update-player', authenticateToken, requireAdmin, (req, res) => {
   try {
     let { reg_number, full_name, gender, department_branch, year, mobile_number, email_id } = req.body
 
@@ -1955,7 +2072,7 @@ app.put('/api/update-player', (req, res) => {
 })
 
 // API endpoint to export players data to Excel
-app.get('/api/export-excel', (req, res) => {
+app.get('/api/export-excel', authenticateToken, requireAdmin, (req, res) => {
   try {
     // Read existing data
     let players = []
@@ -1965,7 +2082,7 @@ app.get('/api/export-excel', (req, res) => {
     }
 
     // Filter out admin user
-    const nonAdminPlayers = players.filter(p => p.reg_number !== '00000000000')
+    const nonAdminPlayers = players.filter(p => p.reg_number !== 'admin')
 
     // Define all sports in order with exact column headers as specified
     const sportColumns = [

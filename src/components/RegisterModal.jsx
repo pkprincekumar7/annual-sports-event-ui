@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react'
-
-const SCRIPT_URL =
-  'https://script.google.com/macros/s/AKfycbzc16n3UxlBROhxToMYhdS-sC6AnLX9Wk5_8ymnchwbSUUT13oigk89A6EK9J1mY5NJGA/exec'
+import { fetchWithAuth } from '../utils/api'
 
 function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedInUser, onUserUpdate }) {
   const [registrationCountdown, setRegistrationCountdown] = useState('')
@@ -15,7 +13,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
   // Fetch players list for team player dropdowns
   useEffect(() => {
     if (isOpen && isTeam) {
-      fetch('http://localhost:3001/api/players')
+      fetchWithAuth('http://localhost:3001/api/players')
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
@@ -233,11 +231,8 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
 
     // Validate participation limits before submitting
     try {
-      const validationResponse = await fetch('http://localhost:3001/api/validate-participations', {
+      const validationResponse = await fetchWithAuth('http://localhost:3001/api/validate-participations', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           reg_numbers: playerRegNumbers,
           sport: selectedSport.name,
@@ -256,35 +251,11 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
     }
 
     try {
-      const formData = new FormData()
-      formData.append('sports', selectedSport.name)
-      formData.append('eventType', 'team')
-      formData.append('teamName', teamName)
-      formData.append('collegeName', 'Purnea College of Engineering, Purnea')
-
-      // Add selected players
-      for (let i = 1; i <= playerCount; i++) {
-        const player = players.find((p) => p.reg_number === selectedPlayers[i])
-        if (player) {
-          formData.append(`player_${i}`, `${player.full_name} (${player.reg_number})`)
-        }
-      }
-
-      // Submit to Google Apps Script
-      await fetch(SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        body: formData,
-      })
-
       // Update participated_in for all selected players (already collected above)
       if (playerRegNumbers.length > 0) {
         try {
-          const participationResponse = await fetch('http://localhost:3001/api/update-team-participation', {
+          const participationResponse = await fetchWithAuth('http://localhost:3001/api/update-team-participation', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
             body: JSON.stringify({
               reg_numbers: playerRegNumbers,
               sport: selectedSport.name,
@@ -305,7 +276,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
           if (loggedInUser && playerRegNumbers.includes(loggedInUser.reg_number) && onUserUpdate) {
             // Fetch updated player data
             try {
-              const playerResponse = await fetch('http://localhost:3001/api/players')
+              const playerResponse = await fetchWithAuth('http://localhost:3001/api/players')
               const playerData = await playerResponse.json()
               if (playerData.success) {
                 const updatedPlayer = playerData.players.find(p => p.reg_number === loggedInUser.reg_number)
@@ -352,26 +323,10 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
     }
 
     try {
-      const formData = new FormData()
-      formData.append('sports', selectedSport.name)
-      formData.append('eventType', 'individual')
-      formData.append('collegeName', 'Purnea College of Engineering, Purnea')
-      formData.append('confirmed', 'yes')
-
-      // Submit to Google Apps Script
-      await fetch(SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        body: formData,
-      })
-
       // Update participated_in field in players.json
       try {
-        const response = await fetch('http://localhost:3001/api/update-participation', {
+        const response = await fetchWithAuth('http://localhost:3001/api/update-participation', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
           body: JSON.stringify({
             reg_number: loggedInUser.reg_number,
             sport: selectedSport.name,
@@ -538,7 +493,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
                     <option value="">Select Player</option>
                     {players
                       .filter((player) => 
-                        player.reg_number !== '00000000000' && 
+                        player.reg_number !== 'admin' && 
                         player.gender === loggedInUser?.gender &&
                         player.year === loggedInUser?.year &&
                         (player.reg_number === selectedPlayers[index] || !otherSelectedRegNumbers.includes(player.reg_number))

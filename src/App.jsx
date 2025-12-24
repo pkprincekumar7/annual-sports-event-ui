@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { fetchWithAuth } from './utils/api'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import SportsSection from './components/SportsSection'
@@ -25,30 +26,35 @@ function App() {
   const [statusPopup, setStatusPopup] = useState({ show: false, message: '', type: 'success' })
   const loginSuccessRef = useRef(false) // Track if login was successful to preserve selectedSport
   
-  // Load logged-in user from localStorage on mount
+  // Load logged-in user and token from localStorage on mount
   const [loggedInUser, setLoggedInUser] = useState(() => {
     const storedUser = localStorage.getItem('loggedInUser')
     return storedUser ? JSON.parse(storedUser) : null
   })
+  const [authToken, setAuthToken] = useState(() => {
+    return localStorage.getItem('authToken') || null
+  })
 
-  // Save logged-in user to localStorage whenever it changes
+  // Save logged-in user and token to localStorage whenever they change
   useEffect(() => {
     if (loggedInUser) {
       localStorage.setItem('loggedInUser', JSON.stringify(loggedInUser))
     } else {
       localStorage.removeItem('loggedInUser')
+      localStorage.removeItem('authToken')
+      setAuthToken(null)
     }
   }, [loggedInUser])
 
   const handleSportClick = (sport) => {
     // If admin is logged in and it's a team event, open team details modal
-    if (loggedInUser?.reg_number === '00000000000' && sport.type === 'team') {
+    if (loggedInUser?.reg_number === 'admin' && sport.type === 'team') {
       setSelectedSport(sport)
       setIsTeamDetailsModalOpen(true)
       return
     }
     // If admin is logged in and it's not a team event, show participant details
-    if (loggedInUser?.reg_number === '00000000000' && sport.type === 'individual') {
+    if (loggedInUser?.reg_number === 'admin' && sport.type === 'individual') {
       setSelectedSport(sport)
       setIsParticipantDetailsModalOpen(true)
       return
@@ -66,32 +72,19 @@ function App() {
         p.sport === sport.name && p.team_name
       )
     
-    // If captain clicks on their team event sport
-    if (isCaptainForSport && sport.type === 'team') {
-      // Check if captain has already created a team for this sport
-      const hasTeam = loggedInUser?.participated_in && 
-        Array.isArray(loggedInUser.participated_in) &&
-        loggedInUser.participated_in.some(p => 
-          p.sport === sport.name && p.team_name
-        )
-      
-      if (hasTeam) {
-        // Captain has a team - show team details
-        setSelectedSport(sport)
-        setIsTeamDetailsModalOpen(true)
-      } else {
-        // Captain hasn't created a team yet - show registration form
-        setSelectedSport(sport)
-        setIsModalOpen(true)
-      }
+    // If user is enrolled in this team event (as participant, regardless of captain status for other sports)
+    // Show team details first - this handles both captains enrolled as participants and regular participants
+    if (sport.type === 'team' && isEnrolledInTeamEvent) {
+      setSelectedSport(sport)
+      setIsTeamDetailsModalOpen(true)
       return
     }
     
-    // If non-captain user clicks on a team event sport they are enrolled in
-    if (!isCaptainForSport && sport.type === 'team' && isEnrolledInTeamEvent) {
-      // Show team details (same as captain sees)
+    // If captain clicks on their team event sport (but not enrolled yet)
+    if (isCaptainForSport && sport.type === 'team') {
+      // Captain hasn't created a team yet - show registration form
       setSelectedSport(sport)
-      setIsTeamDetailsModalOpen(true)
+      setIsModalOpen(true)
       return
     }
     
@@ -104,7 +97,7 @@ function App() {
     
     // For individual/cultural events, check if user has already participated
     // Skip this check for admin users
-    const isAdmin = loggedInUser?.reg_number === '00000000000'
+    const isAdmin = loggedInUser?.reg_number === 'admin'
     if (sport.type === 'individual' && !isAdmin) {
       const hasParticipated = loggedInUser?.participated_in && 
         Array.isArray(loggedInUser.participated_in) &&
@@ -137,9 +130,14 @@ function App() {
     loginSuccessRef.current = false // Reset the flag
   }
 
-  const handleLoginSuccess = (player) => {
+  const handleLoginSuccess = (player, token) => {
     // Store player data in memory (excluding password)
     setLoggedInUser(player)
+    // Store JWT token
+    if (token) {
+      setAuthToken(token)
+      localStorage.setItem('authToken', token)
+    }
     // Set flag to indicate login was successful
     loginSuccessRef.current = true
     // If there was a selected sport before login, open registration modal after login
@@ -157,9 +155,11 @@ function App() {
   }
 
   const handleLogout = () => {
-    // Clear logged-in user data from memory and localStorage
+    // Clear logged-in user data and token from memory and localStorage
     setLoggedInUser(null)
+    setAuthToken(null)
     localStorage.removeItem('loggedInUser')
+    localStorage.removeItem('authToken')
     showStatusPopup('✅ Logged out successfully!', 'success', 2000)
   }
 
@@ -172,7 +172,7 @@ function App() {
 
   const handleExportExcel = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/export-excel')
+      const response = await fetchWithAuth('http://localhost:3001/api/export-excel')
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))

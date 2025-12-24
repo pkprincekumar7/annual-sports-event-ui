@@ -27,8 +27,12 @@ function LoginModal({ isOpen, onClose, onLoginSuccess, onStatusPopup }) {
       const data = await response.json()
 
       if (response.ok && data.success) {
+        // Store JWT token in localStorage
+        if (data.token) {
+          localStorage.setItem('authToken', data.token)
+        }
         onStatusPopup('✅ Login successful!', 'success', 2000)
-        onLoginSuccess(data.player)
+        onLoginSuccess(data.player, data.token)
         setRegNumber('')
         setPassword('')
         onClose()

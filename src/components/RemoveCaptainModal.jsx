@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { fetchWithAuth } from '../utils/api'
 
 function RemoveCaptainModal({ isOpen, onClose, onStatusPopup }) {
   const [captainsBySport, setCaptainsBySport] = useState({})
@@ -10,11 +11,14 @@ function RemoveCaptainModal({ isOpen, onClose, onStatusPopup }) {
   // Fetch captains by sport
   useEffect(() => {
     if (isOpen) {
-      fetch('http://localhost:3001/api/captains-by-sport')
+      fetchWithAuth('http://localhost:3001/api/captains-by-sport')
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
             setCaptainsBySport(data.captainsBySport || {})
+          } else {
+            setCaptainsBySport({})
+            onStatusPopup(`❌ ${data.error || 'Error fetching captains. Please try again.'}`, 'error', 2500)
           }
         })
         .catch((err) => {
@@ -53,11 +57,8 @@ function RemoveCaptainModal({ isOpen, onClose, onStatusPopup }) {
     setRemoving(true)
     setShowConfirmModal(false)
     try {
-      const response = await fetch('http://localhost:3001/api/remove-captain', {
+      const response = await fetchWithAuth('http://localhost:3001/api/remove-captain', {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           reg_number: captainToRemove.regNumber,
           sport: captainToRemove.sport,
@@ -73,7 +74,7 @@ function RemoveCaptainModal({ isOpen, onClose, onStatusPopup }) {
           3000
         )
         // Refresh the captains list
-        fetch('http://localhost:3001/api/captains-by-sport')
+        fetchWithAuth('http://localhost:3001/api/captains-by-sport')
           .then((res) => res.json())
           .then((data) => {
             if (data.success) {

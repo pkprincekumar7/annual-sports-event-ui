@@ -1,6 +1,6 @@
 [
   {
-    "reg_number": "00000000000",
+    "reg_number": "admin",
     "full_name": "Admin User",
     "gender": "Male",
     "department_branch": "CSE (AI)",
@@ -25,6 +25,10 @@
       },
       {
         "sport": "Carrom"
+      },
+      {
+        "sport": "Relay 4×400 m",
+        "team_name": "Team 5"
       }
     ],
     "captain_in": [
@@ -72,6 +76,10 @@
       },
       {
         "sport": "Story Writing"
+      },
+      {
+        "sport": "Relay 4×400 m",
+        "team_name": "Team 5"
       }
     ],
     "captain_in": []
@@ -111,6 +119,10 @@
       {
         "sport": "Relay 4×100 m",
         "team_name": "Relay 4X100 M Team 1"
+      },
+      {
+        "sport": "Relay 4×400 m",
+        "team_name": "Team 5"
       }
     ],
     "captain_in": []
@@ -214,6 +226,10 @@
       {
         "sport": "Relay 4×100 m",
         "team_name": "Relay 4X100 M Team 1"
+      },
+      {
+        "sport": "Relay 4×400 m",
+        "team_name": "Team 5"
       }
     ],
     "captain_in": []

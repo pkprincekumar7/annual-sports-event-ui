@@ -112,4 +112,4 @@ For detailed API documentation, see [SERVER_README.md](./SERVER_README.md)
 - Images are stored in `public/images/` directory
 - Player data is stored locally in `public/json_store/players.json`
 - The backend server must be running for full functionality
-- Admin user credentials: Registration Number: `00000000000`
+- Admin user credentials: Registration Number: `admin`

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { fetchWithAuth } from '../utils/api'
 
 function AddCaptainModal({ isOpen, onClose, onStatusPopup }) {
   const [players, setPlayers] = useState([])
@@ -9,13 +10,13 @@ function AddCaptainModal({ isOpen, onClose, onStatusPopup }) {
   // Fetch players list
   useEffect(() => {
     if (isOpen) {
-      fetch('http://localhost:3001/api/players')
+      fetchWithAuth('http://localhost:3001/api/players')
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
             // Filter out admin user
             const filteredPlayers = (data.players || []).filter(
-              (p) => p.reg_number !== '00000000000'
+              (p) => p.reg_number !== 'admin'
             )
             setPlayers(filteredPlayers)
           }
@@ -26,7 +27,7 @@ function AddCaptainModal({ isOpen, onClose, onStatusPopup }) {
         })
 
       // Fetch sports list for dropdown
-      fetch('http://localhost:3001/api/sports')
+      fetchWithAuth('http://localhost:3001/api/sports')
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
@@ -75,11 +76,8 @@ function AddCaptainModal({ isOpen, onClose, onStatusPopup }) {
     }
 
     try {
-      const response = await fetch('http://localhost:3001/api/add-captain', {
+      const response = await fetchWithAuth('http://localhost:3001/api/add-captain', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           reg_number: selectedPlayer.reg_number,
           sport: sport,
