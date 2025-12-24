@@ -8,7 +8,7 @@ import AddCaptainModal from './components/AddCaptainModal'
 import RemoveCaptainModal from './components/RemoveCaptainModal'
 import TeamDetailsModal from './components/TeamDetailsModal'
 import ParticipantDetailsModal from './components/ParticipantDetailsModal'
-import StudentListModal from './components/StudentListModal'
+import PlayerListModal from './components/PlayerListModal'
 import AboutSection from './components/AboutSection'
 import Footer from './components/Footer'
 import StatusPopup from './components/StatusPopup'
@@ -20,7 +20,7 @@ function App() {
   const [isRemoveCaptainModalOpen, setIsRemoveCaptainModalOpen] = useState(false)
   const [isTeamDetailsModalOpen, setIsTeamDetailsModalOpen] = useState(false)
   const [isParticipantDetailsModalOpen, setIsParticipantDetailsModalOpen] = useState(false)
-  const [isStudentListModalOpen, setIsStudentListModalOpen] = useState(false)
+  const [isPlayerListModalOpen, setIsPlayerListModalOpen] = useState(false)
   const [selectedSport, setSelectedSport] = useState(null)
   const [statusPopup, setStatusPopup] = useState({ show: false, message: '', type: 'success' })
   const loginSuccessRef = useRef(false) // Track if login was successful to preserve selectedSport
@@ -59,6 +59,13 @@ function App() {
       Array.isArray(loggedInUser.captain_in) && 
       loggedInUser.captain_in.includes(sport.name)
     
+    // Check if user is enrolled in this team event (has team_name in participated_in)
+    const isEnrolledInTeamEvent = loggedInUser?.participated_in && 
+      Array.isArray(loggedInUser.participated_in) &&
+      loggedInUser.participated_in.some(p => 
+        p.sport === sport.name && p.team_name
+      )
+    
     // If captain clicks on their team event sport
     if (isCaptainForSport && sport.type === 'team') {
       // Check if captain has already created a team for this sport
@@ -77,6 +84,14 @@ function App() {
         setSelectedSport(sport)
         setIsModalOpen(true)
       }
+      return
+    }
+    
+    // If non-captain user clicks on a team event sport they are enrolled in
+    if (!isCaptainForSport && sport.type === 'team' && isEnrolledInTeamEvent) {
+      // Show team details (same as captain sees)
+      setSelectedSport(sport)
+      setIsTeamDetailsModalOpen(true)
       return
     }
     
@@ -122,9 +137,9 @@ function App() {
     loginSuccessRef.current = false // Reset the flag
   }
 
-  const handleLoginSuccess = (student) => {
-    // Store student data in memory (excluding password)
-    setLoggedInUser(student)
+  const handleLoginSuccess = (player) => {
+    // Store player data in memory (excluding password)
+    setLoggedInUser(player)
     // Set flag to indicate login was successful
     loginSuccessRef.current = true
     // If there was a selected sport before login, open registration modal after login
@@ -136,9 +151,9 @@ function App() {
     }
   }
 
-  const handleUserUpdate = (updatedStudent) => {
+  const handleUserUpdate = (updatedPlayer) => {
     // Update logged-in user data (e.g., after participation update)
-    setLoggedInUser(updatedStudent)
+    setLoggedInUser(updatedPlayer)
   }
 
   const handleLogout = () => {
@@ -155,6 +170,51 @@ function App() {
     }, duration)
   }
 
+  const handleExportExcel = async () => {
+    try {
+      const response = await fetch('http://localhost:3001/api/export-excel')
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        showStatusPopup(
+          `❌ ${errorData.error || 'Failed to export Excel file. Please try again.'}`,
+          'error',
+          3000
+        )
+        return
+      }
+
+      // Get the blob from response
+      const blob = await response.blob()
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      
+      // Get filename from Content-Disposition header or use default
+      const contentDisposition = response.headers.get('Content-Disposition')
+      let filename = 'Players_Report.xlsx'
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/)
+        if (filenameMatch) {
+          filename = filenameMatch[1]
+        }
+      }
+      
+      link.setAttribute('download', filename)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+      
+      showStatusPopup('✅ Excel file downloaded successfully!', 'success', 2500)
+    } catch (err) {
+      console.error('Error exporting Excel:', err)
+      showStatusPopup('❌ Error exporting Excel file. Please try again.', 'error', 3000)
+    }
+  }
+
   return (
     <>
       <Navbar />
@@ -166,7 +226,8 @@ function App() {
             onLogout={handleLogout}
             onAddCaptainClick={() => setIsAddCaptainModalOpen(true)}
             onRemoveCaptainClick={() => setIsRemoveCaptainModalOpen(true)}
-            onListStudentsClick={() => setIsStudentListModalOpen(true)}
+            onListPlayersClick={() => setIsPlayerListModalOpen(true)}
+            onExportExcel={handleExportExcel}
             loggedInUser={loggedInUser}
           />
           <SportsSection onSportClick={handleSportClick} loggedInUser={loggedInUser} />
@@ -216,9 +277,9 @@ function App() {
         loggedInUser={loggedInUser}
         onStatusPopup={showStatusPopup}
       />
-      <StudentListModal
-        isOpen={isStudentListModalOpen}
-        onClose={() => setIsStudentListModalOpen(false)}
+      <PlayerListModal
+        isOpen={isPlayerListModalOpen}
+        onClose={() => setIsPlayerListModalOpen(false)}
         onStatusPopup={showStatusPopup}
       />
       <AboutSection />

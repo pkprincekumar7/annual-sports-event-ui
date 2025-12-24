@@ -28,7 +28,7 @@ function LoginModal({ isOpen, onClose, onLoginSuccess, onStatusPopup }) {
 
       if (response.ok && data.success) {
         onStatusPopup('✅ Login successful!', 'success', 2000)
-        onLoginSuccess(data.student)
+        onLoginSuccess(data.player)
         setRegNumber('')
         setPassword('')
         onClose()
@@ -62,7 +62,7 @@ function LoginModal({ isOpen, onClose, onLoginSuccess, onStatusPopup }) {
 
         <div className="text-[0.78rem] uppercase tracking-[0.16em] text-[#a5b4fc] mb-1 text-center">Login</div>
         <div className="text-[1.25rem] font-extrabold text-center uppercase tracking-[0.14em] text-[#ffe66d] mb-[0.7rem]">
-          Student Login
+          Player Login
         </div>
         <div className="text-[0.85rem] text-center text-[#e5e7eb] mb-4">PCE, Purnea • Umang – 2026 Sports Fest</div>
 

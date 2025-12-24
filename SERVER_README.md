@@ -1,6 +1,6 @@
 # Backend Server Setup
 
-This project includes a backend server to save student registration data to a JSON file.
+This project includes a backend server to save player registration data to a JSON file.
 
 ## Installation
 
@@ -30,19 +30,19 @@ npm run dev
 
 ## API Endpoints
 
-### GET `/api/students`
-Retrieves all students from `public/json_store/students.json`
+### GET `/api/players`
+Retrieves all players from `public/json_store/players.json`
 
 **Response:**
 ```json
 {
   "success": true,
-  "students": [...]
+  "players": [...]
 }
 ```
 
-### POST `/api/save-student`
-Saves a single student's data to `public/json_store/students.json`
+### POST `/api/save-player`
+Saves a single player's data to `public/json_store/players.json`
 
 **Request Body:**
 ```json
@@ -58,13 +58,13 @@ Saves a single student's data to `public/json_store/students.json`
 }
 ```
 
-### POST `/api/save-students`
-Saves multiple students' data (for team events) to `public/json_store/students.json`
+### POST `/api/save-players`
+Saves multiple players' data (for team events) to `public/json_store/players.json`
 
 **Request Body:**
 ```json
 {
-  "students": [
+  "players": [
     {
       "reg_number": "12345",
       "full_name": "John Doe",
@@ -81,9 +81,9 @@ Saves multiple students' data (for team events) to `public/json_store/students.j
 
 ## Data Storage
 
-Student data is saved to: `public/json_store/students.json`
+Player data is saved to: `public/json_store/players.json`
 
-The file structure is an array of student objects:
+The file structure is an array of player objects:
 ```json
 [
   {

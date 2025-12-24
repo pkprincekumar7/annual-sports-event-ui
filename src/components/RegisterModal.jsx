@@ -5,26 +5,26 @@ const SCRIPT_URL =
 
 function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedInUser, onUserUpdate }) {
   const [registrationCountdown, setRegistrationCountdown] = useState('')
-  const [students, setStudents] = useState([])
+  const [players, setPlayers] = useState([])
   const [selectedPlayers, setSelectedPlayers] = useState({})
 
   const isTeam = selectedSport?.type === 'team'
   const playerCount = isTeam ? selectedSport?.players || 0 : 0
   const isGeneralRegistration = !selectedSport
 
-  // Fetch students list for team player dropdowns
+  // Fetch players list for team player dropdowns
   useEffect(() => {
     if (isOpen && isTeam) {
-      fetch('http://localhost:3001/api/students')
+      fetch('http://localhost:3001/api/players')
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
-            setStudents(data.students || [])
+            setPlayers(data.players || [])
           }
         })
         .catch((err) => {
-          console.error('Error fetching students:', err)
-          setStudents([])
+          console.error('Error fetching players:', err)
+          setPlayers([])
         })
     }
   }, [isOpen, isTeam])
@@ -104,7 +104,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
 
     try {
       // Save to JSON file via backend API
-      const response = await fetch('http://localhost:3001/api/save-student', {
+      const response = await fetch('http://localhost:3001/api/save-player', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -185,8 +185,8 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
     for (let i = 1; i <= playerCount; i++) {
       if (selectedPlayers[i]) {
         if (duplicateCheck.has(selectedPlayers[i])) {
-          const student = students.find(s => s.reg_number === selectedPlayers[i])
-          duplicates.push(student ? student.full_name : selectedPlayers[i])
+          const player = players.find(p => p.reg_number === selectedPlayers[i])
+          duplicates.push(player ? player.full_name : selectedPlayers[i])
         } else {
           duplicateCheck.add(selectedPlayers[i])
           playerRegNumbers.push(selectedPlayers[i])
@@ -203,9 +203,9 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
     const genderMismatches = []
     for (let i = 1; i <= playerCount; i++) {
       if (selectedPlayers[i]) {
-        const student = students.find(s => s.reg_number === selectedPlayers[i])
-        if (student && student.gender !== loggedInUser.gender) {
-          genderMismatches.push(`${student.full_name} (${student.reg_number})`)
+        const player = players.find(p => p.reg_number === selectedPlayers[i])
+        if (player && player.gender !== loggedInUser.gender) {
+          genderMismatches.push(`${player.full_name} (${player.reg_number})`)
         }
       }
     }
@@ -219,9 +219,9 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
     const yearMismatches = []
     for (let i = 1; i <= playerCount; i++) {
       if (selectedPlayers[i]) {
-        const student = students.find(s => s.reg_number === selectedPlayers[i])
-        if (student && student.year !== loggedInUser.year) {
-          yearMismatches.push(`${student.full_name} (${student.reg_number})`)
+        const player = players.find(p => p.reg_number === selectedPlayers[i])
+        if (player && player.year !== loggedInUser.year) {
+          yearMismatches.push(`${player.full_name} (${player.reg_number})`)
         }
       }
     }
@@ -264,9 +264,9 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
 
       // Add selected players
       for (let i = 1; i <= playerCount; i++) {
-        const student = students.find((s) => s.reg_number === selectedPlayers[i])
-        if (student) {
-          formData.append(`player_${i}`, `${student.full_name} (${student.reg_number})`)
+        const player = players.find((p) => p.reg_number === selectedPlayers[i])
+        if (player) {
+          formData.append(`player_${i}`, `${player.full_name} (${player.reg_number})`)
         }
       }
 
@@ -303,15 +303,15 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
 
           // Update logged-in user data if they are one of the players
           if (loggedInUser && playerRegNumbers.includes(loggedInUser.reg_number) && onUserUpdate) {
-            // Fetch updated student data
+            // Fetch updated player data
             try {
-              const studentResponse = await fetch('http://localhost:3001/api/students')
-              const studentData = await studentResponse.json()
-              if (studentData.success) {
-                const updatedStudent = studentData.students.find(s => s.reg_number === loggedInUser.reg_number)
-                if (updatedStudent) {
-                  const { password: _, ...studentWithoutPassword } = updatedStudent
-                  onUserUpdate(studentWithoutPassword)
+              const playerResponse = await fetch('http://localhost:3001/api/players')
+              const playerData = await playerResponse.json()
+              if (playerData.success) {
+                const updatedPlayer = playerData.players.find(p => p.reg_number === loggedInUser.reg_number)
+                if (updatedPlayer) {
+                  const { password: _, ...playerWithoutPassword } = updatedPlayer
+                  onUserUpdate(playerWithoutPassword)
                 }
               }
             } catch (updateError) {
@@ -365,7 +365,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
         body: formData,
       })
 
-      // Update participated_in field in students.json
+      // Update participated_in field in players.json
       try {
         const response = await fetch('http://localhost:3001/api/update-participation', {
           method: 'POST',
@@ -388,9 +388,9 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
         }
 
         // Update logged-in user data with latest information
-        if (data.student && onUserUpdate) {
-          const { password: _, ...updatedStudent } = data.student
-          onUserUpdate(updatedStudent)
+        if (data.player && onUserUpdate) {
+          const { password: _, ...updatedPlayer } = data.player
+          onUserUpdate(updatedPlayer)
         }
 
         onStatusPopup(`✅ Your registration for ${selectedSport.name.toUpperCase()} has been saved!`, 'success', 2500)
@@ -536,16 +536,16 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
                     className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
                   >
                     <option value="">Select Player</option>
-                    {students
-                      .filter((student) => 
-                        student.reg_number !== '00000000000' && 
-                        student.gender === loggedInUser?.gender &&
-                        student.year === loggedInUser?.year &&
-                        (student.reg_number === selectedPlayers[index] || !otherSelectedRegNumbers.includes(student.reg_number))
+                    {players
+                      .filter((player) => 
+                        player.reg_number !== '00000000000' && 
+                        player.gender === loggedInUser?.gender &&
+                        player.year === loggedInUser?.year &&
+                        (player.reg_number === selectedPlayers[index] || !otherSelectedRegNumbers.includes(player.reg_number))
                       )
-                      .map((student) => (
-                        <option key={student.reg_number} value={student.reg_number}>
-                          {student.full_name} ({student.reg_number})
+                      .map((player) => (
+                        <option key={player.reg_number} value={player.reg_number}>
+                          {player.full_name} ({player.reg_number})
                         </option>
                       ))}
                   </select>
@@ -600,7 +600,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
 
         <div className="text-[0.78rem] uppercase tracking-[0.16em] text-[#a5b4fc] mb-1 text-center">Official Registration</div>
         <div className="text-[1.25rem] font-extrabold text-center uppercase tracking-[0.14em] text-[#ffe66d] mb-[0.7rem]">
-          Student Entry Form
+          Player Entry Form
         </div>
         <div className="text-[0.85rem] text-center text-[#e5e7eb] mb-4">PCE, Purnea • Umang – 2026 Sports Fest</div>
 

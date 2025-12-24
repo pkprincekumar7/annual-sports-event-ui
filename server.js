@@ -3,6 +3,7 @@ import cors from 'cors'
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import XLSX from 'xlsx'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -17,31 +18,31 @@ app.use(express.urlencoded({ extended: true }))
 
 // Ensure json_store directory exists
 const jsonStorePath = path.join(__dirname, 'public', 'json_store')
-const studentsJsonPath = path.join(jsonStorePath, 'students.json')
+const playersJsonPath = path.join(jsonStorePath, 'players.json')
 
 if (!fs.existsSync(jsonStorePath)) {
   fs.mkdirSync(jsonStorePath, { recursive: true })
 }
 
-// Initialize students.json if it doesn't exist
-if (!fs.existsSync(studentsJsonPath)) {
-  fs.writeFileSync(studentsJsonPath, JSON.stringify([], null, 2))
+// Initialize players.json if it doesn't exist
+if (!fs.existsSync(playersJsonPath)) {
+  fs.writeFileSync(playersJsonPath, JSON.stringify([], null, 2))
 }
 
-// API endpoint to get all students
-app.get('/api/students', (req, res) => {
+// API endpoint to get all players
+app.get('/api/players', (req, res) => {
   try {
-    let students = []
-    if (fs.existsSync(studentsJsonPath)) {
-      const fileContent = fs.readFileSync(studentsJsonPath, 'utf8')
-      students = JSON.parse(fileContent)
+    let players = []
+    if (fs.existsSync(playersJsonPath)) {
+      const fileContent = fs.readFileSync(playersJsonPath, 'utf8')
+      players = JSON.parse(fileContent)
     }
-    res.json({ success: true, students })
+    res.json({ success: true, players })
   } catch (error) {
-    console.error('Error reading students data:', error)
+    console.error('Error reading players data:', error)
     res.status(500).json({ 
       success: false, 
-      error: 'Failed to read students data',
+      error: 'Failed to read players data',
       details: error.message 
     })
   }
@@ -106,37 +107,37 @@ app.post('/api/add-captain', (req, res) => {
     }
 
     // Read existing data
-    let students = []
-    if (fs.existsSync(studentsJsonPath)) {
-      const fileContent = fs.readFileSync(studentsJsonPath, 'utf8')
-      students = JSON.parse(fileContent)
+    let players = []
+    if (fs.existsSync(playersJsonPath)) {
+      const fileContent = fs.readFileSync(playersJsonPath, 'utf8')
+      players = JSON.parse(fileContent)
     }
 
-    // Find student
-    const studentIndex = students.findIndex(s => s.reg_number === reg_number)
-    if (studentIndex === -1) {
+    // Find player
+    const playerIndex = players.findIndex(p => p.reg_number === reg_number)
+    if (playerIndex === -1) {
       return res.status(404).json({ 
         success: false, 
-        error: 'Student not found' 
+        error: 'Player not found' 
       })
     }
 
     // Initialize captain_in array if it doesn't exist
-    if (!students[studentIndex].captain_in) {
-      students[studentIndex].captain_in = []
+    if (!players[playerIndex].captain_in) {
+      players[playerIndex].captain_in = []
     }
 
     // Check if already a captain for this sport (uniqueness check)
-    if (students[studentIndex].captain_in.includes(sport)) {
+    if (players[playerIndex].captain_in.includes(sport)) {
       return res.status(400).json({ 
         success: false, 
-        error: `Student is already a captain for ${sport}` 
+        error: `Player is already a captain for ${sport}` 
       })
     }
 
     // Check for duplicate elements in captain_in array
-    const captainInSet = new Set(students[studentIndex].captain_in)
-    if (captainInSet.size !== students[studentIndex].captain_in.length) {
+    const captainInSet = new Set(players[playerIndex].captain_in)
+    if (captainInSet.size !== players[playerIndex].captain_in.length) {
       return res.status(400).json({ 
         success: false, 
         error: 'captain_in array contains duplicate entries. Please fix the data first.' 
@@ -144,7 +145,7 @@ app.post('/api/add-captain', (req, res) => {
     }
 
     // Check maximum limit: captain_in array can have maximum 10 unique entries
-    const currentCaptainCount = students[studentIndex].captain_in.length
+    const currentCaptainCount = players[playerIndex].captain_in.length
     if (currentCaptainCount >= 10) {
       return res.status(400).json({ 
         success: false, 
@@ -153,13 +154,13 @@ app.post('/api/add-captain', (req, res) => {
     }
 
     // Initialize participated_in array if it doesn't exist
-    if (!students[studentIndex].participated_in) {
-      students[studentIndex].participated_in = []
+    if (!players[playerIndex].participated_in) {
+      players[playerIndex].participated_in = []
     }
 
     // Check for duplicate sport entries in participated_in array (uniqueness check)
-    const sportSet = new Set(students[studentIndex].participated_in.map(p => p.sport))
-    if (sportSet.size !== students[studentIndex].participated_in.length) {
+    const sportSet = new Set(players[playerIndex].participated_in.map(p => p.sport))
+    if (sportSet.size !== players[playerIndex].participated_in.length) {
       return res.status(400).json({ 
         success: false, 
         error: 'participated_in array contains duplicate sport entries. Please fix the data first.' 
@@ -167,7 +168,7 @@ app.post('/api/add-captain', (req, res) => {
     }
 
     // Check maximum limit: participated_in array can have maximum 10 unique entries (based on sport name)
-    const currentParticipationsCount = students[studentIndex].participated_in.length
+    const currentParticipationsCount = players[playerIndex].participated_in.length
     if (currentParticipationsCount >= 10) {
       return res.status(400).json({ 
         success: false, 
@@ -176,16 +177,16 @@ app.post('/api/add-captain', (req, res) => {
     }
 
     // Count non-team participations (entries without team_name)
-    const nonTeamParticipations = students[studentIndex].participated_in.filter(
+    const nonTeamParticipations = players[playerIndex].participated_in.filter(
       p => !p.team_name
     ).length
 
     // Count team participations where sport IS in captain_in array (these count towards captain limit)
-    const captainTeamParticipations = students[studentIndex].participated_in.filter(
+    const captainTeamParticipations = players[playerIndex].participated_in.filter(
       p => p.team_name && 
-      students[studentIndex].captain_in && 
-      Array.isArray(students[studentIndex].captain_in) && 
-      students[studentIndex].captain_in.includes(p.sport)
+      players[playerIndex].captain_in && 
+      Array.isArray(players[playerIndex].captain_in) && 
+      players[playerIndex].captain_in.includes(p.sport)
     ).length
 
     // Check: (captain_in length + non-team participated_in) should not exceed 10
@@ -205,19 +206,44 @@ app.post('/api/add-captain', (req, res) => {
       })
     }
 
+    // Check if player is already a participant in a team for this sport
+    // If they are, the team already has a captain (teams cannot be created/updated without exactly one captain)
+    // So we should prevent adding this player as captain if they're not already the captain
+    const existingTeamParticipation = players[playerIndex].participated_in.find(
+      p => p.sport === sport && p.team_name
+    )
+
+    if (existingTeamParticipation) {
+      // Player is already in a team for this sport
+      // Check if they're already the captain for this sport
+      const isAlreadyCaptain = players[playerIndex].captain_in && 
+                               Array.isArray(players[playerIndex].captain_in) && 
+                               players[playerIndex].captain_in.includes(sport)
+      
+      if (!isAlreadyCaptain) {
+        // Player is in a team but not the captain, which means the team already has a captain
+        // We cannot add this player as captain because a team can only have one captain
+        return res.status(400).json({ 
+          success: false, 
+          error: `Cannot add captain role. Player is already in team "${existingTeamParticipation.team_name}" for ${sport}, which already has a captain. A team can only have one captain.` 
+        })
+      }
+      // If they're already the captain, the duplicate check on line 130 will catch it
+    }
+
     // Add sport to captain_in array
-    students[studentIndex].captain_in.push(sport)
+    players[playerIndex].captain_in.push(sport)
 
     // Write back to file
-    fs.writeFileSync(studentsJsonPath, JSON.stringify(students, null, 2))
+    fs.writeFileSync(playersJsonPath, JSON.stringify(players, null, 2))
 
-    // Return student data (excluding password for security)
-    const { password: _, ...studentData } = students[studentIndex]
+    // Return player data (excluding password for security)
+    const { password: _, ...playerData } = players[playerIndex]
 
     res.json({ 
       success: true, 
       message: `Captain added successfully for ${sport}`,
-      student: studentData
+      player: playerData
     })
   } catch (error) {
     console.error('Error adding captain:', error)
@@ -264,63 +290,63 @@ app.delete('/api/remove-captain', (req, res) => {
     }
 
     // Read existing data
-    let students = []
-    if (fs.existsSync(studentsJsonPath)) {
-      const fileContent = fs.readFileSync(studentsJsonPath, 'utf8')
-      students = JSON.parse(fileContent)
+    let players = []
+    if (fs.existsSync(playersJsonPath)) {
+      const fileContent = fs.readFileSync(playersJsonPath, 'utf8')
+      players = JSON.parse(fileContent)
     }
 
-    // Find student
-    const studentIndex = students.findIndex(s => s.reg_number === reg_number)
-    if (studentIndex === -1) {
+    // Find player
+    const playerIndex = players.findIndex(p => p.reg_number === reg_number)
+    if (playerIndex === -1) {
       return res.status(404).json({ 
         success: false, 
-        error: 'Student not found' 
+        error: 'Player not found' 
       })
     }
 
     // Initialize captain_in array if it doesn't exist
-    if (!students[studentIndex].captain_in) {
-      students[studentIndex].captain_in = []
+    if (!players[playerIndex].captain_in) {
+      players[playerIndex].captain_in = []
     }
 
-    // Check if student is a captain for this sport
-    if (!students[studentIndex].captain_in.includes(sport)) {
+    // Check if player is a captain for this sport
+    if (!players[playerIndex].captain_in.includes(sport)) {
       return res.status(400).json({ 
         success: false, 
-        error: `Student is not a captain for ${sport}` 
+        error: `Player is not a captain for ${sport}` 
       })
     }
 
-    // Check if student has created a team for this sport
-    if (students[studentIndex].participated_in && Array.isArray(students[studentIndex].participated_in)) {
-      const teamParticipation = students[studentIndex].participated_in.find(
+    // Check if player has created a team for this sport
+    if (players[playerIndex].participated_in && Array.isArray(players[playerIndex].participated_in)) {
+      const teamParticipation = players[playerIndex].participated_in.find(
         p => p.sport === sport && p.team_name
       )
       
       if (teamParticipation) {
         return res.status(400).json({ 
           success: false, 
-          error: `Cannot remove captain role. Student has already created a team (${teamParticipation.team_name}) for ${sport}. Please delete the team first.` 
+          error: `Cannot remove captain role. Player has already created a team (${teamParticipation.team_name}) for ${sport}. Please delete the team first.` 
         })
       }
     }
 
     // Remove sport from captain_in array
-    students[studentIndex].captain_in = students[studentIndex].captain_in.filter(
+    players[playerIndex].captain_in = players[playerIndex].captain_in.filter(
       s => s !== sport
     )
 
     // Write back to file
-    fs.writeFileSync(studentsJsonPath, JSON.stringify(students, null, 2))
+    fs.writeFileSync(playersJsonPath, JSON.stringify(players, null, 2))
 
-    // Return student data (excluding password for security)
-    const { password: _, ...studentData } = students[studentIndex]
+    // Return player data (excluding password for security)
+    const { password: _, ...playerData } = players[playerIndex]
 
     res.json({ 
       success: true, 
       message: `Captain role removed successfully for ${sport}`,
-      student: studentData
+      player: playerData
     })
   } catch (error) {
     console.error('Error removing captain:', error)
@@ -336,14 +362,14 @@ app.delete('/api/remove-captain', (req, res) => {
 app.get('/api/captains-by-sport', (req, res) => {
   try {
     // Read existing data
-    let students = []
-    if (fs.existsSync(studentsJsonPath)) {
-      const fileContent = fs.readFileSync(studentsJsonPath, 'utf8')
-      students = JSON.parse(fileContent)
+    let players = []
+    if (fs.existsSync(playersJsonPath)) {
+      const fileContent = fs.readFileSync(playersJsonPath, 'utf8')
+      players = JSON.parse(fileContent)
     }
 
     // Filter out admin user
-    const nonAdminStudents = students.filter(s => s.reg_number !== '00000000000')
+    const nonAdminPlayers = players.filter(p => p.reg_number !== '00000000000')
 
     // Group captains by sport
     const captainsBySport = {}
@@ -365,15 +391,15 @@ app.get('/api/captains-by-sport', (req, res) => {
     })
 
     // Find all captains
-    nonAdminStudents.forEach(student => {
-      if (student.captain_in && Array.isArray(student.captain_in)) {
-        student.captain_in.forEach(sport => {
+    nonAdminPlayers.forEach(player => {
+      if (player.captain_in && Array.isArray(player.captain_in)) {
+        player.captain_in.forEach(sport => {
           if (teamSports.includes(sport)) {
             if (!captainsBySport[sport]) {
               captainsBySport[sport] = []
             }
-            const { password: _, ...studentData } = student
-            captainsBySport[sport].push(studentData)
+            const { password: _, ...playerData } = player
+            captainsBySport[sport].push(playerData)
           }
         })
       }
@@ -413,87 +439,87 @@ app.post('/api/validate-participations', (req, res) => {
     }
 
     // Read existing data
-    let students = []
-    if (fs.existsSync(studentsJsonPath)) {
-      const fileContent = fs.readFileSync(studentsJsonPath, 'utf8')
-      students = JSON.parse(fileContent)
+    let players = []
+    if (fs.existsSync(playersJsonPath)) {
+      const fileContent = fs.readFileSync(playersJsonPath, 'utf8')
+      players = JSON.parse(fileContent)
     }
 
     const errors = []
 
-    // Validate each student
+    // Validate each player
     for (const reg_number of reg_numbers) {
-      const student = students.find(s => s.reg_number === reg_number)
-      if (!student) {
-        errors.push(`Student with reg_number ${reg_number} not found`)
+      const player = players.find(p => p.reg_number === reg_number)
+      if (!player) {
+        errors.push(`Player with reg_number ${reg_number} not found`)
         continue
       }
 
       // Initialize participated_in array if it doesn't exist
-      if (!student.participated_in) {
-        student.participated_in = []
+      if (!player.participated_in) {
+        player.participated_in = []
       }
 
       // Check if already participated in this sport (for team events, player can only be in one team per sport)
-      const existingParticipation = student.participated_in.find(p => p.sport === sport)
+      const existingParticipation = player.participated_in.find(p => p.sport === sport)
       if (existingParticipation) {
         if (existingParticipation.team_name) {
-          // Check if this student is a captain for this sport
-          const isCaptain = student.captain_in && Array.isArray(student.captain_in) && student.captain_in.includes(sport)
+          // Check if this player is a captain for this sport
+          const isCaptain = player.captain_in && Array.isArray(player.captain_in) && player.captain_in.includes(sport)
           if (isCaptain) {
-            errors.push(`${student.full_name} (${reg_number}) is a captain and has already created a team (${existingParticipation.team_name}) for ${sport}. A captain cannot create multiple teams for the same sport.`)
+            errors.push(`${player.full_name} (${reg_number}) is a captain and has already created a team (${existingParticipation.team_name}) for ${sport}. A captain cannot create multiple teams for the same sport.`)
           } else {
-            errors.push(`${student.full_name} (${reg_number}) is already in a team (${existingParticipation.team_name}) for ${sport}. A player can only belong to one team per sport.`)
+            errors.push(`${player.full_name} (${reg_number}) is already in a team (${existingParticipation.team_name}) for ${sport}. A player can only belong to one team per sport.`)
           }
         } else {
-          errors.push(`${student.full_name} (${reg_number}) is already registered for ${sport}`)
+          errors.push(`${player.full_name} (${reg_number}) is already registered for ${sport}`)
         }
         continue
       }
 
       // Check for duplicate sport entries in participated_in array (uniqueness check)
-      const sportSet = new Set(student.participated_in.map(p => p.sport))
-      if (sportSet.size !== student.participated_in.length) {
-        errors.push(`${student.full_name} (${reg_number}) has duplicate sport entries in participated_in array. Please fix the data first.`)
+      const sportSet = new Set(player.participated_in.map(p => p.sport))
+      if (sportSet.size !== player.participated_in.length) {
+        errors.push(`${player.full_name} (${reg_number}) has duplicate sport entries in participated_in array. Please fix the data first.`)
         continue
       }
 
       // Check maximum limit: participated_in array can have maximum 10 unique entries (based on sport name)
-      const currentParticipationsCount = student.participated_in.length
+      const currentParticipationsCount = player.participated_in.length
       if (currentParticipationsCount >= 10) {
-        errors.push(`${student.full_name} (${reg_number}) has reached maximum 10 participations (based on unique sport names). Please remove a participation first.`)
+        errors.push(`${player.full_name} (${reg_number}) has reached maximum 10 participations (based on unique sport names). Please remove a participation first.`)
         continue
       }
 
       // Count non-team participations (entries without team_name)
-      const nonTeamParticipations = student.participated_in.filter(
+      const nonTeamParticipations = player.participated_in.filter(
         p => !p.team_name
       ).length
 
       // Count team participations where sport IS in captain_in array (these count towards captain limit)
-      const captainTeamParticipations = student.participated_in.filter(
+      const captainTeamParticipations = player.participated_in.filter(
         p => p.team_name && 
-        student.captain_in && 
-        Array.isArray(student.captain_in) && 
-        student.captain_in.includes(p.sport)
+        player.captain_in && 
+        Array.isArray(player.captain_in) && 
+        player.captain_in.includes(p.sport)
       ).length
 
       // Get captain count
-      const captainCount = student.captain_in && Array.isArray(student.captain_in) 
-        ? student.captain_in.length 
+      const captainCount = player.captain_in && Array.isArray(player.captain_in) 
+        ? player.captain_in.length 
         : 0
       
       // Check if this is a team event (has team_name in the request context)
       // For team events: check if sport is in captain_in array
-      const isCaptainForSport = student.captain_in && 
-        Array.isArray(student.captain_in) && 
-        student.captain_in.includes(sport)
+      const isCaptainForSport = player.captain_in && 
+        Array.isArray(player.captain_in) && 
+        player.captain_in.includes(sport)
       
       if (isCaptainForSport) {
         // This is a team event where the player IS a captain for this sport
         // Check: team participations (for captain sports) should not exceed captain_in length
         if (captainTeamParticipations >= captainCount) {
-          errors.push(`${student.full_name} (${reg_number}) has reached maximum team participations for captain sports (${captainCount}). Maximum team participations allowed for sports in captain_in array is equal to captain roles (${captainCount}).`)
+          errors.push(`${player.full_name} (${reg_number}) has reached maximum team participations for captain sports (${captainCount}). Maximum team participations allowed for sports in captain_in array is equal to captain roles (${captainCount}).`)
           continue
         }
       } else {
@@ -509,7 +535,7 @@ app.post('/api/validate-participations', (req, res) => {
     // Check for multiple captains in the same request
     // Note: This is a preliminary check. The actual team validation happens in update-team-participation
     const captainsInRequest = reg_numbers
-      .map(rn => students.find(s => s.reg_number === rn))
+      .map(rn => players.find(s => s.reg_number === rn))
       .filter(s => s && s.captain_in && Array.isArray(s.captain_in) && s.captain_in.includes(sport))
 
     if (captainsInRequest.length > 1) {
@@ -591,10 +617,10 @@ app.post('/api/update-team-participation', (req, res) => {
     }
 
     // Read existing data
-    let students = []
-    if (fs.existsSync(studentsJsonPath)) {
-      const fileContent = fs.readFileSync(studentsJsonPath, 'utf8')
-      students = JSON.parse(fileContent)
+    let players = []
+    if (fs.existsSync(playersJsonPath)) {
+      const fileContent = fs.readFileSync(playersJsonPath, 'utf8')
+      players = JSON.parse(fileContent)
     }
 
     // Validate all players exist and have same gender and year
@@ -602,12 +628,12 @@ app.post('/api/update-team-participation', (req, res) => {
     const errors = []
 
     for (const reg_number of reg_numbers) {
-      const student = students.find(s => s.reg_number === reg_number)
-      if (!student) {
-        errors.push(`Student with reg_number ${reg_number} not found`)
+      const player = players.find(p => p.reg_number === reg_number)
+      if (!player) {
+        errors.push(`Player with reg_number ${reg_number} not found`)
         continue
       }
-      playerData.push(student)
+      playerData.push(player)
     }
 
     if (errors.length > 0) {
@@ -670,8 +696,8 @@ app.post('/api/update-team-participation', (req, res) => {
     }
 
     // Check if there's already a captain in the existing team (if team already exists)
-    // Find all students who are already in this team for this sport
-    const existingTeamMembers = students.filter(s => {
+    // Find all players who are already in this team for this sport
+    const existingTeamMembers = players.filter(s => {
       if (!s.participated_in || !Array.isArray(s.participated_in)) {
         return false
       }
@@ -698,106 +724,106 @@ app.post('/api/update-team-participation', (req, res) => {
       })
     }
 
-    const updatedStudents = []
+    const updatedPlayers = []
 
-    // Process each student
+    // Process each player
     for (const reg_number of reg_numbers) {
-      const studentIndex = students.findIndex(s => s.reg_number === reg_number)
-      if (studentIndex === -1) {
-        errors.push(`Student with reg_number ${reg_number} not found`)
+      const playerIndex = players.findIndex(p => p.reg_number === reg_number)
+      if (playerIndex === -1) {
+        errors.push(`Player with reg_number ${reg_number} not found`)
         continue
       }
 
       // Initialize participated_in array if it doesn't exist
-      if (!students[studentIndex].participated_in) {
-        students[studentIndex].participated_in = []
+      if (!players[playerIndex].participated_in) {
+        players[playerIndex].participated_in = []
       }
 
       // Check for duplicate sport entries in participated_in array (uniqueness check)
-      const sportSet = new Set(students[studentIndex].participated_in.map(p => p.sport))
-      if (sportSet.size !== students[studentIndex].participated_in.length) {
-        errors.push(`${students[studentIndex].full_name} (${reg_number}) has duplicate sport entries in participated_in array. Please fix the data first.`)
+      const sportSet = new Set(players[playerIndex].participated_in.map(p => p.sport))
+      if (sportSet.size !== players[playerIndex].participated_in.length) {
+        errors.push(`${players[playerIndex].full_name} (${reg_number}) has duplicate sport entries in participated_in array. Please fix the data first.`)
         continue
       }
 
       // Check maximum limit: participated_in array can have maximum 10 unique entries (based on sport name)
-      const currentParticipationsCount = students[studentIndex].participated_in.length
+      const currentParticipationsCount = players[playerIndex].participated_in.length
       if (currentParticipationsCount >= 10) {
-        errors.push(`${students[studentIndex].full_name} (${reg_number}) has reached maximum 10 participations (based on unique sport names). Please remove a participation first.`)
+        errors.push(`${players[playerIndex].full_name} (${reg_number}) has reached maximum 10 participations (based on unique sport names). Please remove a participation first.`)
         continue
       }
 
       // Check if already participated in this sport (for team events, player can only be in one team per sport)
-      const existingParticipation = students[studentIndex].participated_in.find(
+      const existingParticipation = players[playerIndex].participated_in.find(
         p => p.sport === sport
       )
 
       if (existingParticipation) {
         if (existingParticipation.team_name) {
-          // Check if this student is a captain for this sport
-          const isCaptain = students[studentIndex].captain_in && 
-            Array.isArray(students[studentIndex].captain_in) && 
-            students[studentIndex].captain_in.includes(sport)
+          // Check if this player is a captain for this sport
+          const isCaptain = players[playerIndex].captain_in && 
+            Array.isArray(players[playerIndex].captain_in) && 
+            players[playerIndex].captain_in.includes(sport)
           
           if (isCaptain) {
-            errors.push(`${students[studentIndex].full_name} (${reg_number}) is a captain and has already created a team (${existingParticipation.team_name}) for ${sport}. A captain cannot create multiple teams for the same sport.`)
+            errors.push(`${players[playerIndex].full_name} (${reg_number}) is a captain and has already created a team (${existingParticipation.team_name}) for ${sport}. A captain cannot create multiple teams for the same sport.`)
           } else {
-            errors.push(`${students[studentIndex].full_name} (${reg_number}) is already in a team (${existingParticipation.team_name}) for ${sport}. A player can only belong to one team per sport.`)
+            errors.push(`${players[playerIndex].full_name} (${reg_number}) is already in a team (${existingParticipation.team_name}) for ${sport}. A player can only belong to one team per sport.`)
           }
         } else {
-          errors.push(`${students[studentIndex].full_name} (${reg_number}) is already registered for ${sport}`)
+          errors.push(`${players[playerIndex].full_name} (${reg_number}) is already registered for ${sport}`)
         }
         continue
       }
 
       // Check if this player is a captain for this sport
-      const isCaptainForSport = students[studentIndex].captain_in && 
-        Array.isArray(students[studentIndex].captain_in) && 
-        students[studentIndex].captain_in.includes(sport)
+      const isCaptainForSport = players[playerIndex].captain_in && 
+        Array.isArray(players[playerIndex].captain_in) && 
+        players[playerIndex].captain_in.includes(sport)
       
       // Count team participations where sport IS in captain_in array (these count towards captain limit)
-      const captainTeamParticipations = students[studentIndex].participated_in.filter(
+      const captainTeamParticipations = players[playerIndex].participated_in.filter(
         p => p.team_name && 
-        students[studentIndex].captain_in && 
-        Array.isArray(students[studentIndex].captain_in) && 
-        students[studentIndex].captain_in.includes(p.sport)
+        players[playerIndex].captain_in && 
+        Array.isArray(players[playerIndex].captain_in) && 
+        players[playerIndex].captain_in.includes(p.sport)
       ).length
 
       // Get captain count
-      const captainCount = students[studentIndex].captain_in && Array.isArray(students[studentIndex].captain_in) 
-        ? students[studentIndex].captain_in.length 
+      const captainCount = players[playerIndex].captain_in && Array.isArray(players[playerIndex].captain_in) 
+        ? players[playerIndex].captain_in.length 
         : 0
 
       // Only check limit if this sport IS in captain_in array
       // If player is a captain for this sport, check: team participations (for captain sports) should not exceed captain_in length
       if (isCaptainForSport) {
         if (captainTeamParticipations >= captainCount) {
-          errors.push(`${students[studentIndex].full_name} (${reg_number}) has reached maximum team participations for captain sports (${captainCount}). Maximum team participations allowed for sports in captain_in array is equal to captain roles (${captainCount}).`)
+          errors.push(`${players[playerIndex].full_name} (${reg_number}) has reached maximum team participations for captain sports (${captainCount}). Maximum team participations allowed for sports in captain_in array is equal to captain roles (${captainCount}).`)
           continue
         }
       }
       // If player is NOT a captain for this sport, they can still join the team (no limit check)
 
       // Add sport to participated_in array with team_name
-      students[studentIndex].participated_in.push({ sport, team_name })
-      updatedStudents.push(students[studentIndex].reg_number)
+      players[playerIndex].participated_in.push({ sport, team_name })
+      updatedPlayers.push(players[playerIndex].reg_number)
     }
 
     // Write back to file
-    fs.writeFileSync(studentsJsonPath, JSON.stringify(students, null, 2))
+    fs.writeFileSync(playersJsonPath, JSON.stringify(players, null, 2))
 
     if (errors.length > 0) {
       return res.status(400).json({ 
         success: false, 
         error: errors.join('; '),
-        updated_count: updatedStudents.length
+        updated_count: updatedPlayers.length
       })
     }
 
     res.json({ 
       success: true, 
-      message: `Participation updated successfully for ${updatedStudents.length} player(s)`,
-      updated_count: updatedStudents.length
+      message: `Participation updated successfully for ${updatedPlayers.length} player(s)`,
+      updated_count: updatedPlayers.length
     })
   } catch (error) {
     console.error('Error updating team participation:', error)
@@ -841,29 +867,29 @@ app.post('/api/update-participation', (req, res) => {
     }
 
     // Read existing data
-    let students = []
-    if (fs.existsSync(studentsJsonPath)) {
-      const fileContent = fs.readFileSync(studentsJsonPath, 'utf8')
-      students = JSON.parse(fileContent)
+    let players = []
+    if (fs.existsSync(playersJsonPath)) {
+      const fileContent = fs.readFileSync(playersJsonPath, 'utf8')
+      players = JSON.parse(fileContent)
     }
 
-    // Find student
-    const studentIndex = students.findIndex(s => s.reg_number === reg_number)
-    if (studentIndex === -1) {
+    // Find player
+    const playerIndex = players.findIndex(p => p.reg_number === reg_number)
+    if (playerIndex === -1) {
       return res.status(404).json({ 
         success: false, 
-        error: 'Student not found' 
+        error: 'Player not found' 
       })
     }
 
     // Initialize participated_in array if it doesn't exist
-    if (!students[studentIndex].participated_in) {
-      students[studentIndex].participated_in = []
+    if (!players[playerIndex].participated_in) {
+      players[playerIndex].participated_in = []
     }
 
     // Check for duplicate sport entries in participated_in array (uniqueness check)
-    const sportSet = new Set(students[studentIndex].participated_in.map(p => p.sport))
-    if (sportSet.size !== students[studentIndex].participated_in.length) {
+    const sportSet = new Set(players[playerIndex].participated_in.map(p => p.sport))
+    if (sportSet.size !== players[playerIndex].participated_in.length) {
       return res.status(400).json({ 
         success: false, 
         error: 'participated_in array contains duplicate sport entries. Please fix the data first.' 
@@ -871,7 +897,7 @@ app.post('/api/update-participation', (req, res) => {
     }
 
     // Check maximum limit: participated_in array can have maximum 10 unique entries (based on sport name)
-    const currentParticipationsCount = students[studentIndex].participated_in.length
+    const currentParticipationsCount = players[playerIndex].participated_in.length
     if (currentParticipationsCount >= 10) {
       return res.status(400).json({ 
         success: false, 
@@ -880,7 +906,7 @@ app.post('/api/update-participation', (req, res) => {
     }
 
     // Check if already participated in this sport (same sport cannot be participated twice)
-    const existingParticipation = students[studentIndex].participated_in.find(
+    const existingParticipation = players[playerIndex].participated_in.find(
       p => p.sport === sport
     )
 
@@ -892,13 +918,13 @@ app.post('/api/update-participation', (req, res) => {
     }
 
     // Count non-team participations (entries without team_name)
-    const nonTeamParticipations = students[studentIndex].participated_in.filter(
+    const nonTeamParticipations = players[playerIndex].participated_in.filter(
       p => !p.team_name
     ).length
 
     // Get captain count
-    const captainCount = students[studentIndex].captain_in && Array.isArray(students[studentIndex].captain_in) 
-      ? students[studentIndex].captain_in.length 
+    const captainCount = players[playerIndex].captain_in && Array.isArray(players[playerIndex].captain_in) 
+      ? players[playerIndex].captain_in.length 
       : 0
     
     // Check maximum limit: (captain_in length + non-team participated_in) should not exceed 10
@@ -918,18 +944,18 @@ app.post('/api/update-participation', (req, res) => {
     }
 
     // Add sport to participated_in array (without team_name for individual events)
-    students[studentIndex].participated_in.push({ sport })
+    players[playerIndex].participated_in.push({ sport })
 
     // Write back to file
-    fs.writeFileSync(studentsJsonPath, JSON.stringify(students, null, 2))
+    fs.writeFileSync(playersJsonPath, JSON.stringify(players, null, 2))
 
-    // Return student data (excluding password for security)
-    const { password: _, ...studentData } = students[studentIndex]
+    // Return player data (excluding password for security)
+    const { password: _, ...playerData } = players[playerIndex]
 
     res.json({ 
       success: true, 
       message: `Participation updated successfully for ${sport}`,
-      student: studentData
+      player: playerData
     })
   } catch (error) {
     console.error('Error updating participation:', error)
@@ -959,16 +985,16 @@ app.post('/api/login', (req, res) => {
     }
 
     // Read existing data
-    let students = []
-    if (fs.existsSync(studentsJsonPath)) {
-      const fileContent = fs.readFileSync(studentsJsonPath, 'utf8')
-      students = JSON.parse(fileContent)
+    let players = []
+    if (fs.existsSync(playersJsonPath)) {
+      const fileContent = fs.readFileSync(playersJsonPath, 'utf8')
+      players = JSON.parse(fileContent)
     }
 
-    // Find student with matching reg_number
-    const student = students.find(s => s.reg_number === reg_number)
+    // Find player with matching reg_number
+    const player = players.find(p => p.reg_number === reg_number)
 
-    if (!student) {
+    if (!player) {
       return res.status(401).json({ 
         success: false, 
         error: 'Invalid registration number or password' 
@@ -976,7 +1002,7 @@ app.post('/api/login', (req, res) => {
     }
 
     // Check password
-    if (student.password !== password) {
+    if (player.password !== password) {
       return res.status(401).json({ 
         success: false, 
         error: 'Invalid registration number or password' 
@@ -984,20 +1010,20 @@ app.post('/api/login', (req, res) => {
     }
 
     // Initialize participated_in and captain_in if they don't exist
-    if (!student.participated_in) {
-      student.participated_in = []
+    if (!player.participated_in) {
+      player.participated_in = []
     }
-    if (!student.captain_in) {
-      student.captain_in = []
+    if (!player.captain_in) {
+      player.captain_in = []
     }
 
-    // Return student data (excluding password for security)
-    const { password: _, ...studentData } = student
+    // Return player data (excluding password for security)
+    const { password: _, ...playerData } = player
 
     res.json({ 
       success: true, 
       message: 'Login successful',
-      student: studentData
+      player: playerData
     })
   } catch (error) {
     console.error('Error during login:', error)
@@ -1009,8 +1035,8 @@ app.post('/api/login', (req, res) => {
   }
 })
 
-// API endpoint to save student data
-app.post('/api/save-student', (req, res) => {
+// API endpoint to save player data
+app.post('/api/save-player', (req, res) => {
   try {
     let { reg_number, full_name, gender, department_branch, year, mobile_number, email_id, password } = req.body
 
@@ -1078,14 +1104,14 @@ app.post('/api/save-student', (req, res) => {
     }
 
     // Read existing data
-    let students = []
-    if (fs.existsSync(studentsJsonPath)) {
-      const fileContent = fs.readFileSync(studentsJsonPath, 'utf8')
-      students = JSON.parse(fileContent)
+    let players = []
+    if (fs.existsSync(playersJsonPath)) {
+      const fileContent = fs.readFileSync(playersJsonPath, 'utf8')
+      players = JSON.parse(fileContent)
     }
 
-    // Check if student with same reg_number already exists
-    const existingIndex = students.findIndex(s => s.reg_number === reg_number)
+    // Check if player with same reg_number already exists
+    const existingIndex = players.findIndex(s => s.reg_number === reg_number)
     if (existingIndex !== -1) {
       // Reject duplicate registration
       return res.status(409).json({ 
@@ -1095,8 +1121,8 @@ app.post('/api/save-student', (req, res) => {
       })
     }
 
-    // Create new student object (use trimmed values)
-    const newStudent = {
+    // Create new player object (use trimmed values)
+    const newPlayer = {
       reg_number,
       full_name,
       gender,
@@ -1110,35 +1136,35 @@ app.post('/api/save-student', (req, res) => {
     }
     
     // Add to array
-    students.push(newStudent)
+    players.push(newPlayer)
 
     // Write back to file
-    fs.writeFileSync(studentsJsonPath, JSON.stringify(students, null, 2))
+    fs.writeFileSync(playersJsonPath, JSON.stringify(players, null, 2))
 
     res.json({ 
       success: true, 
-      message: 'Student data saved successfully',
-      student: newStudent
+      message: 'Player data saved successfully',
+      player: newPlayer
     })
   } catch (error) {
-    console.error('Error saving student data:', error)
+    console.error('Error saving player data:', error)
     res.status(500).json({ 
       success: false, 
-      error: 'Failed to save student data',
+      error: 'Failed to save player data',
       details: error.message 
     })
   }
 })
 
-// API endpoint to save multiple students (for team events)
-app.post('/api/save-students', (req, res) => {
+// API endpoint to save multiple players (for team events)
+app.post('/api/save-players', (req, res) => {
   try {
-    let { students } = req.body
+    let { players } = req.body
 
-    if (!Array.isArray(students) || students.length === 0) {
+    if (!Array.isArray(players) || players.length === 0) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Invalid students data' 
+        error: 'Invalid players data' 
       })
     }
 
@@ -1149,118 +1175,118 @@ app.post('/api/save-students', (req, res) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     const phoneRegex = /^[0-9]{10}$/
 
-    // Validate and trim each student
-    for (let i = 0; i < students.length; i++) {
-      const student = students[i]
+    // Validate and trim each player
+    for (let i = 0; i < players.length; i++) {
+      const player = players[i]
       
       // Trim all fields
-      student.reg_number = student.reg_number?.trim()
-      student.full_name = student.full_name?.trim()
-      student.gender = student.gender?.trim()
-      student.department_branch = student.department_branch?.trim()
-      student.year = student.year?.trim()
-      student.mobile_number = student.mobile_number?.trim()
-      student.email_id = student.email_id?.trim()
-      student.password = student.password?.trim()
+      player.reg_number = player.reg_number?.trim()
+      player.full_name = player.full_name?.trim()
+      player.gender = player.gender?.trim()
+      player.department_branch = player.department_branch?.trim()
+      player.year = player.year?.trim()
+      player.mobile_number = player.mobile_number?.trim()
+      player.email_id = player.email_id?.trim()
+      player.password = player.password?.trim()
 
       // Validate required fields
-      if (!student.reg_number || !student.full_name || !student.gender || 
-          !student.department_branch || !student.year || !student.mobile_number || !student.email_id || !student.password) {
+      if (!player.reg_number || !player.full_name || !player.gender || 
+          !player.department_branch || !player.year || !player.mobile_number || !player.email_id || !player.password) {
         return res.status(400).json({ 
           success: false, 
-          error: 'Missing required fields in one or more students' 
+          error: 'Missing required fields in one or more players' 
         })
       }
 
       // Validate email format
-      if (!emailRegex.test(student.email_id)) {
+      if (!emailRegex.test(player.email_id)) {
         return res.status(400).json({ 
           success: false, 
-          error: `Invalid email format for student ${i + 1}: ${student.email_id}` 
+          error: `Invalid email format for player ${i + 1}: ${player.email_id}` 
         })
       }
 
       // Validate phone number
-      if (!phoneRegex.test(student.mobile_number)) {
+      if (!phoneRegex.test(player.mobile_number)) {
         return res.status(400).json({ 
           success: false, 
-          error: `Invalid mobile number for student ${i + 1}. Must be 10 digits.` 
+          error: `Invalid mobile number for player ${i + 1}. Must be 10 digits.` 
         })
       }
 
       // Validate gender
-      if (!validGenders.includes(student.gender)) {
+      if (!validGenders.includes(player.gender)) {
         return res.status(400).json({ 
           success: false, 
-          error: `Invalid gender for student ${i + 1}. Must be one of: ${validGenders.join(', ')}` 
+          error: `Invalid gender for player ${i + 1}. Must be one of: ${validGenders.join(', ')}` 
         })
       }
 
       // Validate department
-      if (!validDepartments.includes(student.department_branch)) {
+      if (!validDepartments.includes(player.department_branch)) {
         return res.status(400).json({ 
           success: false, 
-          error: `Invalid department/branch for student ${i + 1}. Must be one of: ${validDepartments.join(', ')}` 
+          error: `Invalid department/branch for player ${i + 1}. Must be one of: ${validDepartments.join(', ')}` 
         })
       }
 
       // Validate year
-      if (!validYears.includes(student.year)) {
+      if (!validYears.includes(player.year)) {
         return res.status(400).json({ 
           success: false, 
-          error: `Invalid year for student ${i + 1}. Must be one of: ${validYears.join(', ')}` 
+          error: `Invalid year for player ${i + 1}. Must be one of: ${validYears.join(', ')}` 
         })
       }
     }
 
     // Read existing data
-    let existingStudents = []
-    if (fs.existsSync(studentsJsonPath)) {
-      const fileContent = fs.readFileSync(studentsJsonPath, 'utf8')
-      existingStudents = JSON.parse(fileContent)
+    let existingPlayers = []
+    if (fs.existsSync(playersJsonPath)) {
+      const fileContent = fs.readFileSync(playersJsonPath, 'utf8')
+      existingPlayers = JSON.parse(fileContent)
     }
 
     // Check for duplicates within the incoming array
     const regNumbers = new Set()
-    for (const student of students) {
-      if (regNumbers.has(student.reg_number)) {
+    for (const player of players) {
+      if (regNumbers.has(player.reg_number)) {
         return res.status(409).json({ 
           success: false, 
-          error: `Duplicate registration number found in the provided data: ${student.reg_number}`,
+          error: `Duplicate registration number found in the provided data: ${player.reg_number}`,
           code: 'DUPLICATE_REG_NUMBER'
         })
       }
-      regNumbers.add(student.reg_number)
+      regNumbers.add(player.reg_number)
     }
 
-    // Check for duplicates against existing students
-    const existingRegNumbers = new Set(existingStudents.map(s => s.reg_number))
-    for (const student of students) {
-      if (existingRegNumbers.has(student.reg_number)) {
+    // Check for duplicates against existing players
+    const existingRegNumbers = new Set(existingPlayers.map(s => s.reg_number))
+    for (const player of players) {
+      if (existingRegNumbers.has(player.reg_number)) {
         return res.status(409).json({ 
           success: false, 
-          error: `Registration number already exists: ${student.reg_number}`,
+          error: `Registration number already exists: ${player.reg_number}`,
           code: 'DUPLICATE_REG_NUMBER'
         })
       }
     }
 
-    // Add new students
-    existingStudents.push(...students)
+    // Add new players
+    existingPlayers.push(...players)
 
     // Write back to file
-    fs.writeFileSync(studentsJsonPath, JSON.stringify(existingStudents, null, 2))
+    fs.writeFileSync(playersJsonPath, JSON.stringify(existingPlayers, null, 2))
 
     res.json({ 
       success: true, 
-      message: `${students.length} student(s) saved successfully`,
-      count: students.length
+      message: `${players.length} player(s) saved successfully`,
+      count: players.length
     })
   } catch (error) {
-    console.error('Error saving students data:', error)
+    console.error('Error saving players data:', error)
     res.status(500).json({ 
       success: false, 
-      error: 'Failed to save students data',
+      error: 'Failed to save players data',
       details: error.message 
     })
   }
@@ -1284,51 +1310,51 @@ app.delete('/api/remove-participation', (req, res) => {
     }
 
     // Read existing data
-    let students = []
-    if (fs.existsSync(studentsJsonPath)) {
-      const fileContent = fs.readFileSync(studentsJsonPath, 'utf8')
-      students = JSON.parse(fileContent)
+    let players = []
+    if (fs.existsSync(playersJsonPath)) {
+      const fileContent = fs.readFileSync(playersJsonPath, 'utf8')
+      players = JSON.parse(fileContent)
     }
 
-    // Find student
-    const studentIndex = students.findIndex(s => s.reg_number === reg_number)
-    if (studentIndex === -1) {
+    // Find player
+    const playerIndex = players.findIndex(p => p.reg_number === reg_number)
+    if (playerIndex === -1) {
       return res.status(404).json({ 
         success: false, 
-        error: 'Student not found' 
+        error: 'Player not found' 
       })
     }
 
     // Initialize participated_in array if it doesn't exist
-    if (!students[studentIndex].participated_in) {
-      students[studentIndex].participated_in = []
+    if (!players[playerIndex].participated_in) {
+      players[playerIndex].participated_in = []
     }
 
     // Find the participation entry for this sport (non-team event - no team_name)
-    const participationIndex = students[studentIndex].participated_in.findIndex(
+    const participationIndex = players[playerIndex].participated_in.findIndex(
       p => p.sport === sport && !p.team_name
     )
 
     if (participationIndex === -1) {
       return res.status(404).json({ 
         success: false, 
-        error: `Student is not registered for ${sport} as a non-team event` 
+        error: `Player is not registered for ${sport} as a non-team event` 
       })
     }
 
     // Remove the participation entry
-    students[studentIndex].participated_in.splice(participationIndex, 1)
+    players[playerIndex].participated_in.splice(participationIndex, 1)
 
     // Write back to file
-    fs.writeFileSync(studentsJsonPath, JSON.stringify(students, null, 2))
+    fs.writeFileSync(playersJsonPath, JSON.stringify(players, null, 2))
 
-    // Return student data (excluding password for security)
-    const { password: _, ...studentData } = students[studentIndex]
+    // Return player data (excluding password for security)
+    const { password: _, ...playerData } = players[playerIndex]
 
     res.json({ 
       success: true, 
       message: `Participation removed successfully for ${sport}`,
-      student: studentData
+      player: playerData
     })
   } catch (error) {
     console.error('Error removing participation:', error)
@@ -1355,26 +1381,26 @@ app.get('/api/teams/:sport', (req, res) => {
     }
 
     // Read existing data
-    let students = []
-    if (fs.existsSync(studentsJsonPath)) {
-      const fileContent = fs.readFileSync(studentsJsonPath, 'utf8')
-      students = JSON.parse(fileContent)
+    let players = []
+    if (fs.existsSync(playersJsonPath)) {
+      const fileContent = fs.readFileSync(playersJsonPath, 'utf8')
+      players = JSON.parse(fileContent)
     }
 
     // Filter out admin user
-    const nonAdminStudents = students.filter(s => s.reg_number !== '00000000000')
+    const nonAdminPlayers = players.filter(p => p.reg_number !== '00000000000')
 
-    // Group students by team name for the specified sport
+    // Group players by team name for the specified sport
     const teamsMap = new Map()
 
-    for (const student of nonAdminStudents) {
-      if (!student.participated_in || !Array.isArray(student.participated_in)) {
+    for (const player of nonAdminPlayers) {
+      if (!player.participated_in || !Array.isArray(player.participated_in)) {
         continue
       }
 
       // Find participation in this sport with a team_name
       // Use exact match for sport name
-      const participation = student.participated_in.find(
+      const participation = player.participated_in.find(
         p => p.sport === sport && p.team_name
       )
 
@@ -1386,9 +1412,9 @@ app.get('/api/teams/:sport', (req, res) => {
           teamsMap.set(teamName, [])
         }
 
-        // Add student to team (excluding password)
-        const { password: _, ...studentData } = student
-        teamsMap.get(teamName).push(studentData)
+        // Add player to team (excluding password)
+        const { password: _, ...playerData } = player
+        teamsMap.get(teamName).push(playerData)
       }
     }
 
@@ -1435,32 +1461,32 @@ app.get('/api/participants/:sport', (req, res) => {
     }
 
     // Read existing data
-    let students = []
-    if (fs.existsSync(studentsJsonPath)) {
-      const fileContent = fs.readFileSync(studentsJsonPath, 'utf8')
-      students = JSON.parse(fileContent)
+    let players = []
+    if (fs.existsSync(playersJsonPath)) {
+      const fileContent = fs.readFileSync(playersJsonPath, 'utf8')
+      players = JSON.parse(fileContent)
     }
 
     // Filter out admin user
-    const nonAdminStudents = students.filter(s => s.reg_number !== '00000000000')
+    const nonAdminPlayers = players.filter(p => p.reg_number !== '00000000000')
 
-    // Find all students who have participated in this sport (non-team events don't have team_name)
+    // Find all players who have participated in this sport (non-team events don't have team_name)
     const participants = []
 
-    for (const student of nonAdminStudents) {
-      if (!student.participated_in || !Array.isArray(student.participated_in)) {
+    for (const player of nonAdminPlayers) {
+      if (!player.participated_in || !Array.isArray(player.participated_in)) {
         continue
       }
 
       // Find participation in this sport without team_name (individual/cultural events)
-      const participation = student.participated_in.find(
+      const participation = player.participated_in.find(
         p => p.sport === sport && !p.team_name
       )
 
       if (participation) {
-        // Add student to participants list (excluding password)
-        const { password: _, ...studentData } = student
-        participants.push(studentData)
+        // Add player to participants list (excluding password)
+        const { password: _, ...playerData } = player
+        participants.push(playerData)
       }
     }
 
@@ -1503,14 +1529,14 @@ app.post('/api/update-team-player', (req, res) => {
     }
 
     // Read existing data
-    let students = []
-    if (fs.existsSync(studentsJsonPath)) {
-      const fileContent = fs.readFileSync(studentsJsonPath, 'utf8')
-      students = JSON.parse(fileContent)
+    let players = []
+    if (fs.existsSync(playersJsonPath)) {
+      const fileContent = fs.readFileSync(playersJsonPath, 'utf8')
+      players = JSON.parse(fileContent)
     }
 
     // Find old player
-    const oldPlayerIndex = students.findIndex(s => s.reg_number === old_reg_number)
+    const oldPlayerIndex = players.findIndex(s => s.reg_number === old_reg_number)
     if (oldPlayerIndex === -1) {
       return res.status(404).json({ 
         success: false, 
@@ -1519,7 +1545,7 @@ app.post('/api/update-team-player', (req, res) => {
     }
 
     // Find new player
-    const newPlayerIndex = students.findIndex(s => s.reg_number === new_reg_number)
+    const newPlayerIndex = players.findIndex(s => s.reg_number === new_reg_number)
     if (newPlayerIndex === -1) {
       return res.status(404).json({ 
         success: false, 
@@ -1528,7 +1554,7 @@ app.post('/api/update-team-player', (req, res) => {
     }
 
     // Check if old player is in the team
-    const oldPlayer = students[oldPlayerIndex]
+    const oldPlayer = players[oldPlayerIndex]
     if (!oldPlayer.participated_in || !Array.isArray(oldPlayer.participated_in)) {
       return res.status(400).json({ 
         success: false, 
@@ -1548,7 +1574,7 @@ app.post('/api/update-team-player', (req, res) => {
     }
 
     // Get all current team members (excluding the old player)
-    const currentTeamMembers = students.filter(s => {
+    const currentTeamMembers = players.filter(s => {
       if (!s.participated_in || !Array.isArray(s.participated_in)) {
         return false
       }
@@ -1559,7 +1585,7 @@ app.post('/api/update-team-player', (req, res) => {
     })
 
     // Validate new player
-    const newPlayer = students[newPlayerIndex]
+    const newPlayer = players[newPlayerIndex]
 
     // Check if new player is already in this team
     if (currentTeamMembers.some(m => m.reg_number === new_reg_number)) {
@@ -1707,7 +1733,7 @@ app.post('/api/update-team-player', (req, res) => {
     newPlayer.participated_in.push({ sport, team_name })
 
     // Write back to file
-    fs.writeFileSync(studentsJsonPath, JSON.stringify(students, null, 2))
+    fs.writeFileSync(playersJsonPath, JSON.stringify(players, null, 2))
 
     // Return updated data
     const { password: _, ...newPlayerData } = newPlayer
@@ -1746,33 +1772,33 @@ app.delete('/api/delete-team', (req, res) => {
     }
 
     // Read existing data
-    let students = []
-    if (fs.existsSync(studentsJsonPath)) {
-      const fileContent = fs.readFileSync(studentsJsonPath, 'utf8')
-      students = JSON.parse(fileContent)
+    let players = []
+    if (fs.existsSync(playersJsonPath)) {
+      const fileContent = fs.readFileSync(playersJsonPath, 'utf8')
+      players = JSON.parse(fileContent)
     }
 
-    // Find all students who are in this team
+    // Find all players who are in this team
     const teamMembers = []
     let deletedCount = 0
 
-    for (let i = 0; i < students.length; i++) {
-      const student = students[i]
-      if (!student.participated_in || !Array.isArray(student.participated_in)) {
+    for (let i = 0; i < players.length; i++) {
+      const player = players[i]
+      if (!player.participated_in || !Array.isArray(player.participated_in)) {
         continue
       }
 
       // Find participation in this team
-      const participationIndex = student.participated_in.findIndex(
+      const participationIndex = player.participated_in.findIndex(
         p => p.sport === sport && p.team_name === team_name
       )
 
       if (participationIndex !== -1) {
         // Remove this participation
-        student.participated_in.splice(participationIndex, 1)
+        player.participated_in.splice(participationIndex, 1)
         teamMembers.push({
-          reg_number: student.reg_number,
-          full_name: student.full_name
+          reg_number: player.reg_number,
+          full_name: player.full_name
         })
         deletedCount++
       }
@@ -1786,7 +1812,7 @@ app.delete('/api/delete-team', (req, res) => {
     }
 
     // Write back to file
-    fs.writeFileSync(studentsJsonPath, JSON.stringify(students, null, 2))
+    fs.writeFileSync(playersJsonPath, JSON.stringify(players, null, 2))
 
     res.json({ 
       success: true, 
@@ -1804,8 +1830,8 @@ app.delete('/api/delete-team', (req, res) => {
   }
 })
 
-// API endpoint to update student data
-app.put('/api/update-student', (req, res) => {
+// API endpoint to update player data
+app.put('/api/update-player', (req, res) => {
   try {
     let { reg_number, full_name, gender, department_branch, year, mobile_number, email_id } = req.body
 
@@ -1872,25 +1898,25 @@ app.put('/api/update-student', (req, res) => {
     }
 
     // Read existing data
-    let students = []
-    if (fs.existsSync(studentsJsonPath)) {
-      const fileContent = fs.readFileSync(studentsJsonPath, 'utf8')
-      students = JSON.parse(fileContent)
+    let players = []
+    if (fs.existsSync(playersJsonPath)) {
+      const fileContent = fs.readFileSync(playersJsonPath, 'utf8')
+      players = JSON.parse(fileContent)
     }
 
-    // Find student with matching reg_number
-    const studentIndex = students.findIndex(s => s.reg_number === reg_number)
-    if (studentIndex === -1) {
+    // Find player with matching reg_number
+    const playerIndex = players.findIndex(p => p.reg_number === reg_number)
+    if (playerIndex === -1) {
       return res.status(404).json({ 
         success: false, 
-        error: 'Student not found' 
+        error: 'Player not found' 
       })
     }
 
     // Preserve existing password, participated_in, and captain_in
-    const existingStudent = students[studentIndex]
-    const updatedStudent = {
-      ...existingStudent,
+    const existingPlayer = players[playerIndex]
+    const updatedPlayer = {
+      ...existingPlayer,
       reg_number, // Keep original reg_number (cannot be changed)
       full_name,
       gender,
@@ -1899,30 +1925,156 @@ app.put('/api/update-student', (req, res) => {
       mobile_number,
       email_id,
       // Preserve password, participated_in, and captain_in
-      password: existingStudent.password,
-      participated_in: existingStudent.participated_in || [],
-      captain_in: existingStudent.captain_in || [],
+      password: existingPlayer.password,
+      participated_in: existingPlayer.participated_in || [],
+      captain_in: existingPlayer.captain_in || [],
     }
 
-    // Update student in array
-    students[studentIndex] = updatedStudent
+    // Update player in array
+    players[playerIndex] = updatedPlayer
 
     // Write back to file
-    fs.writeFileSync(studentsJsonPath, JSON.stringify(students, null, 2))
+    fs.writeFileSync(playersJsonPath, JSON.stringify(players, null, 2))
 
-    // Return updated student (excluding password)
-    const { password: _, ...studentData } = updatedStudent
+    // Return updated player (excluding password)
+    const { password: _, ...playerData } = updatedPlayer
 
     res.json({ 
       success: true, 
-      message: 'Student data updated successfully',
-      student: studentData
+      message: 'Player data updated successfully',
+      player: playerData
     })
   } catch (error) {
-    console.error('Error updating student data:', error)
+    console.error('Error updating player data:', error)
     res.status(500).json({ 
       success: false, 
-      error: 'Failed to update student data',
+      error: 'Failed to update player data',
+      details: error.message 
+    })
+  }
+})
+
+// API endpoint to export players data to Excel
+app.get('/api/export-excel', (req, res) => {
+  try {
+    // Read existing data
+    let players = []
+    if (fs.existsSync(playersJsonPath)) {
+      const fileContent = fs.readFileSync(playersJsonPath, 'utf8')
+      players = JSON.parse(fileContent)
+    }
+
+    // Filter out admin user
+    const nonAdminPlayers = players.filter(p => p.reg_number !== '00000000000')
+
+    // Define all sports in order with exact column headers as specified
+    const sportColumns = [
+      { header: 'CRICKET', sport: 'Cricket' },
+      { header: 'VOLLEYBALL', sport: 'Volleyball' },
+      { header: 'BADMINTON', sport: 'Badminton' },
+      { header: 'TABLE TENNIS', sport: 'Table Tennis' },
+      { header: 'KABADDI', sport: 'Kabaddi' },
+      { header: 'RELAY 4×100 M', sport: 'Relay 4×100 m' },
+      { header: 'RELAY 4×400 M', sport: 'Relay 4×400 m' },
+      { header: 'CARROM', sport: 'Carrom' },
+      { header: 'CHESS', sport: 'Chess' },
+      { header: 'SPRINT 100 M', sport: 'Sprint 100 m' },
+      { header: 'SPRINT 200 M', sport: 'Sprint 200 m' },
+      { header: 'SPRINT 400 M', sport: 'Sprint 400 m' },
+      { header: 'LONG JUMP', sport: 'Long Jump' },
+      { header: 'HIGH JUMP', sport: 'High Jump' },
+      { header: 'JAVELIN', sport: 'Javelin' },
+      { header: 'SHOT PUT', sport: 'Shot Put' },
+      { header: 'DISCUS THROW', sport: 'Discus Throw' },
+      { header: 'ESSAY WRITING', sport: 'Essay Writing' },
+      { header: 'STORY WRITING', sport: 'Story Writing' },
+      { header: 'GROUP DISCUSSION', sport: 'Group Discussion' },
+      { header: 'DEBATE', sport: 'Debate' },
+      { header: 'EXTEMPORE', sport: 'Extempore' },
+      { header: 'QUIZ', sport: 'Quiz' },
+      { header: 'DUMB CHARADES', sport: 'Dumb Charades' },
+      { header: 'PAINTING', sport: 'Painting' },
+      { header: 'SINGING', sport: 'Singing' }
+    ]
+
+    // Team sports (can have CAPTAIN or PARTICIPANT)
+    const teamSports = [
+      'Cricket',
+      'Volleyball',
+      'Badminton',
+      'Table Tennis',
+      'Kabaddi',
+      'Relay 4×100 m',
+      'Relay 4×400 m'
+    ]
+
+    // Prepare data for Excel
+    const excelData = nonAdminPlayers.map(player => {
+      const row = {
+        'REG Number': player.reg_number || '',
+        'Full Name': player.full_name || '',
+        'Gender': player.gender || '',
+        'Department/Branch': player.department_branch || '',
+        'Year': player.year || '',
+        'Mobile Number': player.mobile_number || '',
+        'Email Id': player.email_id || ''
+      }
+
+      // Add sport columns with exact headers as specified
+      sportColumns.forEach(({ header, sport }) => {
+        const isTeamSport = teamSports.includes(sport)
+        const isCaptain = player.captain_in && 
+                         Array.isArray(player.captain_in) && 
+                         player.captain_in.includes(sport)
+        const isParticipant = player.participated_in && 
+                             Array.isArray(player.participated_in) && 
+                             player.participated_in.some(p => p.sport === sport)
+
+        if (isTeamSport) {
+          // Team sports: CAPTAIN, PARTICIPANT, or NA
+          if (isCaptain) {
+            row[header] = 'CAPTAIN'
+          } else if (isParticipant) {
+            row[header] = 'PARTICIPANT'
+          } else {
+            row[header] = 'NA'
+          }
+        } else {
+          // Individual/Cultural sports: PARTICIPANT or NA
+          if (isParticipant) {
+            row[header] = 'PARTICIPANT'
+          } else {
+            row[header] = 'NA'
+          }
+        }
+      })
+
+      return row
+    })
+
+    // Create workbook and worksheet
+    const worksheet = XLSX.utils.json_to_sheet(excelData)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Players Report')
+
+    // Generate Excel buffer
+    const excelBuffer = XLSX.write(workbook, { 
+      type: 'buffer', 
+      bookType: 'xlsx' 
+    })
+
+    // Set response headers
+    const filename = `Players_Report_${new Date().toISOString().split('T')[0]}.xlsx`
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+
+    // Send Excel file
+    res.send(excelBuffer)
+  } catch (error) {
+    console.error('Error exporting Excel:', error)
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to export Excel file',
       details: error.message 
     })
   }
@@ -1930,6 +2082,6 @@ app.put('/api/update-student', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`)
-  console.log(`Students JSON will be saved to: ${studentsJsonPath}`)
+  console.log(`Players JSON will be saved to: ${playersJsonPath}`)
 })
 

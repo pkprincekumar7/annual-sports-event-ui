@@ -22,6 +22,9 @@
       {
         "sport": "Relay 4×100 m",
         "team_name": "Relay 4X100 M Team 1"
+      },
+      {
+        "sport": "Carrom"
       }
     ],
     "captain_in": [
@@ -63,6 +66,12 @@
       },
       {
         "sport": "Chess"
+      },
+      {
+        "sport": "Essay Writing"
+      },
+      {
+        "sport": "Story Writing"
       }
     ],
     "captain_in": []
@@ -85,7 +94,9 @@
         "sport": "Chess"
       }
     ],
-    "captain_in": []
+    "captain_in": [
+      "Relay 4×400 m"
+    ]
   },
   {
     "reg_number": "56789",

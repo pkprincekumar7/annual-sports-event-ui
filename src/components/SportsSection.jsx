@@ -67,11 +67,18 @@ function SportsSection({ onSportClick, loggedInUser }) {
   // - User is not logged in (show all events)
   // - OR logged in user's reg_number is "00000000000" (admin - show all)
   // - OR logged in user has non-empty captain_in array (show only sports in captain_in)
+  // - OR logged in user is enrolled in team events (has participated_in with team_name)
   const isAdmin = loggedInUser?.reg_number === '00000000000'
   const hasCaptainRole = loggedInUser?.captain_in && Array.isArray(loggedInUser.captain_in) && loggedInUser.captain_in.length > 0
-  const showTeamEvents = !loggedInUser || isAdmin || hasCaptainRole
+  
+  // Check if user is enrolled in any team events
+  const hasTeamParticipations = loggedInUser?.participated_in && 
+    Array.isArray(loggedInUser.participated_in) &&
+    loggedInUser.participated_in.some(p => p.team_name)
+  
+  const showTeamEvents = !loggedInUser || isAdmin || hasCaptainRole || hasTeamParticipations
 
-  // Filter team sports based on captain_in for non-admin users
+  // Filter team sports based on captain_in or enrolled participations for non-admin users
   const getTeamSportsToShow = () => {
     if (!loggedInUser || isAdmin) {
       // Show all team sports for non-logged-in users or admin
@@ -82,6 +89,15 @@ function SportsSection({ onSportClick, loggedInUser }) {
       return sportsData.team.filter(sport => 
         loggedInUser.captain_in.includes(sport.name)
       )
+    }
+    // For non-captain users, show only sports where they are enrolled (have team_name in participated_in)
+    if (hasTeamParticipations) {
+      return sportsData.team.filter(sport => {
+        const participation = loggedInUser.participated_in.find(p => 
+          p.sport === sport.name && p.team_name
+        )
+        return !!participation
+      })
     }
     return []
   }
