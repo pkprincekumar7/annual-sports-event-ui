@@ -160,8 +160,6 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
       return
     }
 
-    setIsSubmitting(true)
-
     const form = e.target
     const teamName = form.querySelector('[name="teamName"]')?.value?.trim()
 
@@ -244,6 +242,9 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
       return
     }
 
+    // All client-side validation passed, now set submitting state before API calls
+    setIsSubmitting(true)
+
     // Validate participation limits before submitting
     try {
       const validationResponse = await fetchWithAuth('/api/validate-participations', {
@@ -258,11 +259,14 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
       if (!validationResponse.ok || !validationData.success) {
         const errorMessage = validationData.error || 'Some players cannot participate. Please check and try again.'
         onStatusPopup(`❌ ${errorMessage}`, 'error', 5000)
+        setIsSubmitting(false)
         return
       }
     } catch (validationError) {
       console.error('Error validating participations:', validationError)
-      // Continue with submission if validation fails (network error)
+      onStatusPopup('❌ Error validating participations. Please try again.', 'error', 4000)
+      setIsSubmitting(false)
+      return
     }
 
     try {
@@ -284,6 +288,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
             // Show error message to user
             const errorMessage = participationData.error || 'Error updating player participations. Please try again.'
             onStatusPopup(`❌ ${errorMessage}`, 'error', 5000)
+            setIsSubmitting(false)
             return // Don't proceed with closing modal
           }
 
@@ -308,6 +313,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
         } catch (participationError) {
           console.error('Error updating participation:', participationError)
           onStatusPopup('❌ Error updating player participations. Please try again.', 'error', 4000)
+          setIsSubmitting(false)
           return
         }
       }
