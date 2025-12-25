@@ -233,5 +233,17 @@
       }
     ],
     "captain_in": []
+  },
+  {
+    "reg_number": "10101",
+    "full_name": "12345",
+    "gender": "Male",
+    "department_branch": "CSE",
+    "year": "4th Year (2022)",
+    "mobile_number": "1111111111",
+    "email_id": "q@m.n",
+    "password": "12345",
+    "participated_in": [],
+    "captain_in": []
   }
 ]

@@ -5,6 +5,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
   const [registrationCountdown, setRegistrationCountdown] = useState('')
   const [players, setPlayers] = useState([])
   const [selectedPlayers, setSelectedPlayers] = useState({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const isTeam = selectedSport?.type === 'team'
   const playerCount = isTeam ? selectedSport?.players || 0 : 0
@@ -41,6 +42,10 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
       setSelectedPlayers(initial)
     } else {
       setSelectedPlayers({})
+    }
+    // Reset submitting state when modal closes
+    if (!isOpen) {
+      setIsSubmitting(false)
     }
   }, [isOpen, isTeam, playerCount, loggedInUser])
 
@@ -85,6 +90,8 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
   const handleGeneralSubmit = async (e) => {
     e.preventDefault()
 
+    if (isSubmitting) return
+
     const form = e.target
     const regNumber = form.querySelector('[name="reg_number"]')?.value?.trim()
     const fullName = form.querySelector('[name="full_name"]')?.value?.trim()
@@ -100,6 +107,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
       return
     }
 
+    setIsSubmitting(true)
     try {
       // Save to JSON file via backend API
       const response = await fetch('http://localhost:3001/api/save-player', {
@@ -124,6 +132,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
       if (response.ok && data.success) {
         onStatusPopup('✅ Your registration has been saved!', 'success', 2500)
         form.reset()
+        setIsSubmitting(false)
         setTimeout(() => {
           onClose()
         }, 2500)
@@ -131,10 +140,12 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
         // Handle error response (including duplicate registration)
         const errorMessage = data.error || 'Error while saving. Please try again.'
         onStatusPopup(`❌ ${errorMessage}`, 'error', 3000)
+        setIsSubmitting(false)
       }
     } catch (err) {
       console.error(err)
       onStatusPopup('❌ Error while saving. Please try again.', 'error', 2500)
+      setIsSubmitting(false)
     }
   }
 
@@ -142,10 +153,14 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
   const handleTeamSubmit = async (e) => {
     e.preventDefault()
 
+    if (isSubmitting) return
+
     if (!loggedInUser) {
       onStatusPopup('❌ Please login to register a team.', 'error', 2500)
       return
     }
+
+    setIsSubmitting(true)
 
     const form = e.target
     const teamName = form.querySelector('[name="teamName"]')?.value?.trim()
@@ -301,12 +316,14 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
 
       form.reset()
       setSelectedPlayers({})
+      setIsSubmitting(false)
       setTimeout(() => {
         onClose()
       }, 2500)
     } catch (err) {
       console.error(err)
       onStatusPopup('❌ Error while submitting. Please try again.', 'error', 2500)
+      setIsSubmitting(false)
     }
   }
 
@@ -317,11 +334,14 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
       return
     }
 
+    if (isSubmitting) return
+
     if (!loggedInUser) {
       onStatusPopup('❌ Please login to participate.', 'error', 2500)
       return
     }
 
+    setIsSubmitting(true)
     try {
       // Update participated_in field in players.json
       try {
@@ -339,6 +359,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
           // Show error message to user
           const errorMessage = data.error || 'Error updating participation. Please try again.'
           onStatusPopup(`❌ ${errorMessage}`, 'error', 5000)
+          setIsSubmitting(false)
           return // Don't proceed with closing modal or showing success
         }
 
@@ -349,6 +370,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
         }
 
         onStatusPopup(`✅ Your registration for ${selectedSport.name.toUpperCase()} has been saved!`, 'success', 2500)
+        setIsSubmitting(false)
 
         setTimeout(() => {
           onClose()
@@ -356,11 +378,13 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
       } catch (participationError) {
         console.error('Error updating participation:', participationError)
         onStatusPopup('❌ Error updating participation. Please try again.', 'error', 4000)
+        setIsSubmitting(false)
         return
       }
     } catch (err) {
       console.error(err)
       onStatusPopup('❌ Error while submitting. Please try again.', 'error', 2500)
+      setIsSubmitting(false)
     }
   }
 
@@ -402,14 +426,16 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
             <button
               type="button"
               onClick={() => handleIndividualConfirm(true)}
-              className="flex-1 rounded-full border-none py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#ffe66d] to-[#ff9f1c] text-[#111827] shadow-[0_10px_24px_rgba(250,204,21,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(250,204,21,0.75)]"
+              disabled={isSubmitting}
+              className="flex-1 rounded-full border-none py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#ffe66d] to-[#ff9f1c] text-[#111827] shadow-[0_10px_24px_rgba(250,204,21,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(250,204,21,0.75)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
             >
-              Yes
+              {isSubmitting ? 'Submitting...' : 'Yes'}
             </button>
             <button
               type="button"
               onClick={() => handleIndividualConfirm(false)}
-              className="flex-1 rounded-full border border-[rgba(148,163,184,0.7)] py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-[rgba(15,23,42,0.95)] text-[#e5e7eb] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(15,23,42,0.9)]"
+              disabled={isSubmitting}
+              className="flex-1 rounded-full border border-[rgba(148,163,184,0.7)] py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-[rgba(15,23,42,0.95)] text-[#e5e7eb] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(15,23,42,0.9)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
             >
               No
             </button>
@@ -518,14 +544,16 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
             <div className="flex gap-[0.6rem] mt-[0.8rem]">
               <button
                 type="submit"
-                className="flex-1 rounded-full border-none py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#ffe66d] to-[#ff9f1c] text-[#111827] shadow-[0_10px_24px_rgba(250,204,21,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(250,204,21,0.75)]"
+                disabled={isSubmitting}
+                className="flex-1 rounded-full border-none py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#ffe66d] to-[#ff9f1c] text-[#111827] shadow-[0_10px_24px_rgba(250,204,21,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(250,204,21,0.75)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
               >
-                Submit
+                {isSubmitting ? 'Submitting...' : 'Submit'}
               </button>
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 rounded-full border border-[rgba(148,163,184,0.7)] py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-[rgba(15,23,42,0.95)] text-[#e5e7eb] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(15,23,42,0.9)]"
+                disabled={isSubmitting}
+                className="flex-1 rounded-full border border-[rgba(148,163,184,0.7)] py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-[rgba(15,23,42,0.95)] text-[#e5e7eb] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(15,23,42,0.9)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
               >
                 Cancel
               </button>
@@ -687,14 +715,16 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
           <div className="flex gap-[0.6rem] mt-[0.8rem]">
             <button
               type="submit"
-              className="flex-1 rounded-full border-none py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#ffe66d] to-[#ff9f1c] text-[#111827] shadow-[0_10px_24px_rgba(250,204,21,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(250,204,21,0.75)]"
+              disabled={isSubmitting}
+              className="flex-1 rounded-full border-none py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#ffe66d] to-[#ff9f1c] text-[#111827] shadow-[0_10px_24px_rgba(250,204,21,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(250,204,21,0.75)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
             >
-              Submit
+              {isSubmitting ? 'Registering...' : 'Submit'}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-full border border-[rgba(148,163,184,0.7)] py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-[rgba(15,23,42,0.95)] text-[#e5e7eb] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(15,23,42,0.9)]"
+              disabled={isSubmitting}
+              className="flex-1 rounded-full border border-[rgba(148,163,184,0.7)] py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-[rgba(15,23,42,0.95)] text-[#e5e7eb] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(15,23,42,0.9)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
             >
               Cancel
             </button>

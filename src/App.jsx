@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { fetchWithAuth } from './utils/api'
+import { fetchWithAuth, decodeJWT } from './utils/api'
 import Navbar from './components/Navbar'
 import Hero from './components/Hero'
 import SportsSection from './components/SportsSection'
@@ -26,27 +26,73 @@ function App() {
   const [statusPopup, setStatusPopup] = useState({ show: false, message: '', type: 'success' })
   const loginSuccessRef = useRef(false) // Track if login was successful to preserve selectedSport
   
-  // Load logged-in user and token from localStorage on mount
-  const [loggedInUser, setLoggedInUser] = useState(() => {
-    const storedUser = localStorage.getItem('loggedInUser')
-    return storedUser ? JSON.parse(storedUser) : null
-  })
+  // Only store JWT token in localStorage, not user data
   const [authToken, setAuthToken] = useState(() => {
     return localStorage.getItem('authToken') || null
   })
+  const [loggedInUser, setLoggedInUser] = useState(null)
+  const [isLoadingUser, setIsLoadingUser] = useState(true)
 
-  // Save logged-in user and token to localStorage whenever they change
+  // Fetch user data from server on mount if token exists
   useEffect(() => {
-    if (loggedInUser) {
-      localStorage.setItem('loggedInUser', JSON.stringify(loggedInUser))
-    } else {
-      localStorage.removeItem('loggedInUser')
-      localStorage.removeItem('authToken')
-      setAuthToken(null)
+    const fetchUserData = async () => {
+      const token = localStorage.getItem('authToken')
+      if (!token) {
+        setIsLoadingUser(false)
+        return
+      }
+
+      try {
+        // Decode token to get reg_number
+        const decoded = decodeJWT(token)
+        if (!decoded || !decoded.reg_number) {
+          // Invalid token, clear it
+          localStorage.removeItem('authToken')
+          setAuthToken(null)
+          setIsLoadingUser(false)
+          return
+        }
+
+        // Fetch all players and find current user
+        const response = await fetchWithAuth('http://localhost:3001/api/players')
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.players) {
+            const user = data.players.find(p => p.reg_number === decoded.reg_number)
+            if (user) {
+              // Exclude password from user data
+              const { password: _, ...userData } = user
+              setLoggedInUser(userData)
+            } else {
+              // User not found, clear token
+              localStorage.removeItem('authToken')
+              setAuthToken(null)
+            }
+          }
+        } else {
+          // Token invalid or expired, clear it
+          localStorage.removeItem('authToken')
+          setAuthToken(null)
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error)
+        // On error, clear token
+        localStorage.removeItem('authToken')
+        setAuthToken(null)
+      } finally {
+        setIsLoadingUser(false)
+      }
     }
-  }, [loggedInUser])
+
+    fetchUserData()
+  }, [])
 
   const handleSportClick = (sport) => {
+    // Prevent actions while user data is loading
+    if (isLoadingUser) {
+      return
+    }
+
     // If admin is logged in and it's a team event, open team details modal
     if (loggedInUser?.reg_number === 'admin' && sport.type === 'team') {
       setSelectedSport(sport)
@@ -131,9 +177,10 @@ function App() {
   }
 
   const handleLoginSuccess = (player, token) => {
-    // Store player data in memory (excluding password)
+    // Store player data in memory only (excluding password)
+    // Do NOT store in localStorage - only token is stored
     setLoggedInUser(player)
-    // Store JWT token
+    // Store JWT token in localStorage
     if (token) {
       setAuthToken(token)
       localStorage.setItem('authToken', token)
@@ -149,16 +196,50 @@ function App() {
     }
   }
 
+  // Function to refresh user data from server
+  const refreshUserData = async () => {
+    const token = localStorage.getItem('authToken')
+    if (!token) {
+      setLoggedInUser(null)
+      return
+    }
+
+    try {
+      const decoded = decodeJWT(token)
+      if (!decoded || !decoded.reg_number) {
+        setLoggedInUser(null)
+        return
+      }
+
+      const response = await fetchWithAuth('http://localhost:3001/api/players')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success && data.players) {
+          const user = data.players.find(p => p.reg_number === decoded.reg_number)
+          if (user) {
+            const { password: _, ...userData } = user
+            setLoggedInUser(userData)
+          } else {
+            setLoggedInUser(null)
+          }
+        }
+      } else {
+        setLoggedInUser(null)
+      }
+    } catch (error) {
+      console.error('Error refreshing user data:', error)
+    }
+  }
+
   const handleUserUpdate = (updatedPlayer) => {
     // Update logged-in user data (e.g., after participation update)
     setLoggedInUser(updatedPlayer)
   }
 
   const handleLogout = () => {
-    // Clear logged-in user data and token from memory and localStorage
+    // Clear logged-in user data from memory and token from localStorage
     setLoggedInUser(null)
     setAuthToken(null)
-    localStorage.removeItem('loggedInUser')
     localStorage.removeItem('authToken')
     showStatusPopup('✅ Logged out successfully!', 'success', 2000)
   }
@@ -220,17 +301,62 @@ function App() {
       <Navbar />
       <main id="top" className="max-w-[1300px] mx-auto px-4 py-6 pb-10 grid grid-cols-[minmax(0,1.6fr)] gap-10 max-md:grid-cols-1">
         <section>
-          <Hero 
-            onRegisterClick={() => setIsModalOpen(true)} 
-            onLoginClick={() => setIsLoginModalOpen(true)}
-            onLogout={handleLogout}
-            onAddCaptainClick={() => setIsAddCaptainModalOpen(true)}
-            onRemoveCaptainClick={() => setIsRemoveCaptainModalOpen(true)}
-            onListPlayersClick={() => setIsPlayerListModalOpen(true)}
-            onExportExcel={handleExportExcel}
-            loggedInUser={loggedInUser}
-          />
-          <SportsSection onSportClick={handleSportClick} loggedInUser={loggedInUser} />
+          {isLoadingUser ? (
+            // Show loading state while fetching user data
+            <div id="home" className="mb-6 text-center">
+              <div
+                className="mx-auto px-[1.4rem] py-[1.8rem] pb-8 rounded-[20px] relative overflow-hidden bg-cover bg-center bg-no-repeat"
+                style={{
+                  backgroundImage: 'linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.75)), url("/images/collge.png")',
+                }}
+              >
+                <div className="text-center text-[1.7rem] font-semibold text-white drop-shadow-[0_0_8px_rgba(0,0,0,0.7)]">
+                  Purnea College of Engineering, Purnea
+                </div>
+                <div
+                  className="mt-[1.2rem] mb-[0.6rem] mx-auto text-center w-fit px-[1.6rem] py-2 bg-gradient-to-b from-[#ff3434] to-[#b70000] rounded-full shadow-[0_14px_30px_rgba(0,0,0,0.6),0_0_0_3px_rgba(255,255,255,0.15)] relative overflow-visible"
+                  style={{
+                    position: 'relative',
+                  }}
+                >
+                  <div
+                    className="absolute top-1/2 left-[-26px] w-[42px] h-[26px] bg-gradient-to-b from-[#c40d0d] to-[#7a0202]"
+                    style={{
+                      clipPath: 'polygon(100% 0, 0 0, 80% 50%, 0 100%, 100% 100%)',
+                    }}
+                  />
+                  <div
+                    className="absolute top-1/2 right-[-26px] w-[42px] h-[26px] bg-gradient-to-b from-[#c40d0d] to-[#7a0202]"
+                    style={{
+                      clipPath: 'polygon(0 0, 100% 0, 20% 50%, 100% 100%, 0 100%)',
+                    }}
+                  />
+                  <div className="text-[2.2rem] font-bold tracking-[0.18em] text-white uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.7),0_0_12px_rgba(0,0,0,0.8)] max-md:text-[1.7rem]">
+                    UMANG – 2026
+                  </div>
+                </div>
+                <div className="mt-4 mb-2 text-center">
+                  <div className="text-[1.2rem] font-bold text-[#ffe66d] drop-shadow-[0_0_8px_rgba(0,0,0,0.8)] animate-pulse">
+                    Loading user data...
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <Hero 
+                onRegisterClick={() => setIsModalOpen(true)} 
+                onLoginClick={() => setIsLoginModalOpen(true)}
+                onLogout={handleLogout}
+                onAddCaptainClick={() => setIsAddCaptainModalOpen(true)}
+                onRemoveCaptainClick={() => setIsRemoveCaptainModalOpen(true)}
+                onListPlayersClick={() => setIsPlayerListModalOpen(true)}
+                onExportExcel={handleExportExcel}
+                loggedInUser={loggedInUser}
+              />
+              <SportsSection onSportClick={handleSportClick} loggedInUser={loggedInUser} />
+            </>
+          )}
         </section>
       </main>
       <RegisterModal
