@@ -47,6 +47,7 @@ app.use('/api', (req, res, next) => {
 })
 
 // JWT Authentication Middleware
+// Verifies JWT token and checks if user exists in the database
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization']
   const token = authHeader && authHeader.split(' ')[1] // Bearer TOKEN
@@ -65,8 +66,37 @@ const authenticateToken = (req, res, next) => {
         error: 'Invalid or expired token. Please login again.' 
       })
     }
-    req.user = decoded // Attach user info to request
-    next()
+    
+    // Verify that the user exists in the players database
+    try {
+      let players = []
+      if (fs.existsSync(playersJsonPath)) {
+        const fileContent = fs.readFileSync(playersJsonPath, 'utf8')
+        players = JSON.parse(fileContent)
+      }
+      
+      const userExists = players.find(p => p.reg_number === decoded.reg_number)
+      if (!userExists) {
+        return res.status(403).json({ 
+          success: false, 
+          error: 'User not found in database. Please login again.' 
+        })
+      }
+      
+      // Attach user info to request (from database, not just token)
+      req.user = {
+        reg_number: decoded.reg_number,
+        full_name: decoded.full_name,
+        isAdmin: decoded.isAdmin
+      }
+      next()
+    } catch (error) {
+      console.error('Error verifying user in database:', error)
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Failed to verify user. Please try again.' 
+      })
+    }
   })
 }
 
@@ -615,21 +645,28 @@ app.post('/api/validate-participations', authenticateToken, (req, res) => {
       errors.push(`Team must have exactly one captain for ${sport}. Found ${captainsInRequest.length} captains.`)
     }
 
-    // Validate that the logged-in user (from JWT token) is the captain for this sport
+    // Validate that the logged-in user is included in the team
+    // Validate that the logged-in user is the captain for this sport
+    // Note: User existence in database is already verified by authenticateToken middleware
     // Only the captain assigned to a sport can create teams for that sport
     const loggedInUserRegNumber = req.user?.reg_number
     if (loggedInUserRegNumber) {
-      const loggedInUserInRequest = players.find(p => p.reg_number === loggedInUserRegNumber)
+      // Get logged-in user from database (already verified to exist by middleware)
+      const loggedInUserInDatabase = players.find(p => p.reg_number === loggedInUserRegNumber)
+      
+      // Check if logged-in user is included in the team request
+      const loggedInUserInRequest = reg_numbers.includes(loggedInUserRegNumber)
       if (!loggedInUserInRequest) {
         errors.push(`You must be included in the team to create it.`)
-      } else {
-        const isLoggedInUserCaptain = loggedInUserInRequest.captain_in && 
-          Array.isArray(loggedInUserInRequest.captain_in) && 
-          loggedInUserInRequest.captain_in.includes(sport)
-        
-        if (!isLoggedInUserCaptain) {
-          errors.push(`You can only create teams for sports where you are assigned as captain. You are not assigned as captain for ${sport}.`)
-        }
+      }
+      
+      // Check if logged-in user is a captain for this sport
+      const isLoggedInUserCaptain = loggedInUserInDatabase.captain_in && 
+        Array.isArray(loggedInUserInDatabase.captain_in) && 
+        loggedInUserInDatabase.captain_in.includes(sport)
+      
+      if (!isLoggedInUserCaptain) {
+        errors.push(`You can only create teams for sports where you are assigned as captain. You are not assigned as captain for ${sport}.`)
       }
     }
 
@@ -778,10 +815,16 @@ app.post('/api/update-team-participation', authenticateToken, (req, res) => {
       })
     }
 
-    // Validate that the logged-in user (from JWT token) is the captain for this sport
+    // Validate that the logged-in user is included in the team
+    // Validate that the logged-in user is the captain for this sport
+    // Note: User existence in database is already verified by authenticateToken middleware
     // Only the captain assigned to a sport can create teams for that sport
     const loggedInUserRegNumber = req.user?.reg_number
     if (loggedInUserRegNumber) {
+      // Get logged-in user from database (already verified to exist by middleware)
+      const loggedInUserInDatabase = players.find(p => p.reg_number === loggedInUserRegNumber)
+      
+      // Check if logged-in user is included in the team
       const loggedInUserInTeam = playerData.find(p => p.reg_number === loggedInUserRegNumber)
       if (!loggedInUserInTeam) {
         return res.status(403).json({ 
@@ -790,9 +833,10 @@ app.post('/api/update-team-participation', authenticateToken, (req, res) => {
         })
       }
       
-      const isLoggedInUserCaptain = loggedInUserInTeam.captain_in && 
-        Array.isArray(loggedInUserInTeam.captain_in) && 
-        loggedInUserInTeam.captain_in.includes(sport)
+      // Check if logged-in user is a captain for this sport
+      const isLoggedInUserCaptain = loggedInUserInDatabase.captain_in && 
+        Array.isArray(loggedInUserInDatabase.captain_in) && 
+        loggedInUserInDatabase.captain_in.includes(sport)
       
       if (!isLoggedInUserCaptain) {
         return res.status(403).json({ 
