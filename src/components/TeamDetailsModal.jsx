@@ -49,7 +49,7 @@ function TeamDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup 
 
   const fetchPlayers = async () => {
     try {
-      const response = await fetchWithAuth('http://localhost:3001/api/players')
+      const response = await fetchWithAuth('/api/players')
       const data = await response.json()
       if (data.success) {
         // Filter out admin user
@@ -75,7 +75,7 @@ function TeamDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup 
     try {
       // URL encode the sport name to handle special characters like ×
       const encodedSport = encodeURIComponent(sport)
-      const url = `http://localhost:3001/api/teams/${encodedSport}`
+      const url = `/api/teams/${encodedSport}`
       console.log('Fetching teams for sport:', sport, 'URL:', url)
       
       const response = await fetchWithAuth(url)
@@ -216,7 +216,7 @@ function TeamDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup 
 
     setUpdating(true)
     try {
-      const response = await fetchWithAuth('http://localhost:3001/api/update-team-player', {
+      const response = await fetchWithAuth('/api/update-team-player', {
         method: 'POST',
         body: JSON.stringify({
           team_name: editingPlayer.team_name,
@@ -255,7 +255,7 @@ function TeamDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup 
   const handleDeleteTeam = async (teamName) => {
     setUpdating(true)
     try {
-      const response = await fetchWithAuth('http://localhost:3001/api/delete-team', {
+      const response = await fetchWithAuth('/api/delete-team', {
         method: 'DELETE',
         body: JSON.stringify({
           team_name: teamName,
