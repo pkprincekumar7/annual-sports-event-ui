@@ -1,27 +1,38 @@
 import { useState, useEffect } from 'react'
+import { fetchWithAuth } from '../utils/api'
 
 function TeamDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup }) {
   const [teams, setTeams] = useState([])
   const [loading, setLoading] = useState(false)
   const [expandedTeams, setExpandedTeams] = useState(new Set())
   const [error, setError] = useState(null)
-  const [students, setStudents] = useState([])
+  const [players, setPlayers] = useState([])
   const [editingPlayer, setEditingPlayer] = useState(null) // { team_name, old_reg_number }
   const [selectedReplacementPlayer, setSelectedReplacementPlayer] = useState('')
   const [updating, setUpdating] = useState(false)
   const [deletingTeam, setDeletingTeam] = useState(null) // team_name being deleted
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   
-  const isAdmin = loggedInUser?.reg_number === '00000000000'
+  const isAdmin = loggedInUser?.reg_number === 'admin'
   const isCaptain = !isAdmin && loggedInUser?.captain_in && 
     Array.isArray(loggedInUser.captain_in) && 
     loggedInUser.captain_in.includes(sport)
+  
+  // Check if user is enrolled in this team event (non-captain participant)
+  const isEnrolledInTeam = !isAdmin && !isCaptain && loggedInUser?.participated_in && 
+    Array.isArray(loggedInUser.participated_in) &&
+    loggedInUser.participated_in.some(p => 
+      p.sport === sport && p.team_name
+    )
+  
+  // User should see only their team if they are captain or enrolled participant
+  const shouldShowOnlyUserTeam = isCaptain || isEnrolledInTeam
 
   useEffect(() => {
     if (isOpen && sport) {
       fetchTeamDetails()
       if (isAdmin) {
-        fetchStudents()
+        fetchPlayers()
       }
     } else {
       // Reset state when modal closes
@@ -36,19 +47,19 @@ function TeamDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, sport, isCaptain, loggedInUser])
 
-  const fetchStudents = async () => {
+  const fetchPlayers = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/students')
+      const response = await fetchWithAuth('/api/players')
       const data = await response.json()
       if (data.success) {
         // Filter out admin user
-        const filteredStudents = (data.students || []).filter(
-          s => s.reg_number !== '00000000000'
+        const filteredPlayers = (data.players || []).filter(
+          p => p.reg_number !== 'admin'
         )
-        setStudents(filteredStudents)
+        setPlayers(filteredPlayers)
       }
     } catch (err) {
-      console.error('Error fetching students:', err)
+      console.error('Error fetching players:', err)
     }
   }
 
@@ -64,10 +75,10 @@ function TeamDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup 
     try {
       // URL encode the sport name to handle special characters like ×
       const encodedSport = encodeURIComponent(sport)
-      const url = `http://localhost:3001/api/teams/${encodedSport}`
+      const url = `/api/teams/${encodedSport}`
       console.log('Fetching teams for sport:', sport, 'URL:', url)
       
-      const response = await fetch(url)
+      const response = await fetchWithAuth(url)
       
       if (!response.ok) {
         // Try to get error message from response
@@ -91,20 +102,20 @@ function TeamDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup 
       if (data.success) {
         let teamsToShow = data.teams || []
         
-        // If captain, filter to show only their team
-        if (isCaptain && loggedInUser && teamsToShow.length > 0) {
-          // Find the team that the captain belongs to
-          const captainTeam = teamsToShow.find(team => 
+        // If captain or enrolled participant, filter to show only their team
+        if (shouldShowOnlyUserTeam && loggedInUser && teamsToShow.length > 0) {
+          // Find the team that the user belongs to
+          const userTeam = teamsToShow.find(team => 
             team.players.some(player => player.reg_number === loggedInUser.reg_number)
           )
           
-          if (captainTeam) {
-            // Show only the captain's team
-            teamsToShow = [captainTeam]
-            // Auto-expand the captain's team
-            setExpandedTeams(new Set([captainTeam.team_name]))
+          if (userTeam) {
+            // Show only the user's team
+            teamsToShow = [userTeam]
+            // Auto-expand the user's team
+            setExpandedTeams(new Set([userTeam.team_name]))
           } else {
-            // Captain is not in any team (shouldn't happen, but handle gracefully)
+            // User is not in any team (shouldn't happen, but handle gracefully)
             teamsToShow = []
           }
         }
@@ -166,7 +177,7 @@ function TeamDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup 
     }
 
     // Get new player data
-    const newPlayer = students.find(s => s.reg_number === selectedReplacementPlayer)
+    const newPlayer = players.find(p => p.reg_number === selectedReplacementPlayer)
     if (!newPlayer) {
       if (onStatusPopup) {
         onStatusPopup('❌ Selected player not found.', 'error', 2500)
@@ -205,11 +216,8 @@ function TeamDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup 
 
     setUpdating(true)
     try {
-      const response = await fetch('http://localhost:3001/api/update-team-player', {
+      const response = await fetchWithAuth('/api/update-team-player', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           team_name: editingPlayer.team_name,
           sport: sport,
@@ -247,11 +255,8 @@ function TeamDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup 
   const handleDeleteTeam = async (teamName) => {
     setUpdating(true)
     try {
-      const response = await fetch('http://localhost:3001/api/delete-team', {
+      const response = await fetchWithAuth('/api/delete-team', {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           team_name: teamName,
           sport: sport,
@@ -303,7 +308,7 @@ function TeamDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup 
         </button>
 
         <div className="text-[0.78rem] uppercase tracking-[0.16em] text-[#a5b4fc] mb-1 text-center">
-          {isAdmin ? 'Admin Panel' : isCaptain ? 'Captain View' : 'Team Details'}
+          {isAdmin ? 'Admin Panel' : shouldShowOnlyUserTeam ? (isCaptain ? 'Captain View' : 'Team Details') : 'Team Details'}
         </div>
         <div className="text-[1.25rem] font-extrabold text-center uppercase tracking-[0.14em] text-[#ffe66d] mb-[0.7rem]">
           Team Details
@@ -326,8 +331,10 @@ function TeamDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup 
 
         {!loading && !error && teams.length === 0 && (
           <div className="text-center py-8 text-[#a5b4fc]">
-            {isCaptain 
-              ? "You haven't created a team for this sport yet. Please register a team first."
+            {shouldShowOnlyUserTeam 
+              ? (isCaptain 
+                  ? "You haven't created a team for this sport yet. Please register a team first."
+                  : "You are not enrolled in any team for this sport yet.")
               : "No teams registered for this sport yet."
             }
           </div>
@@ -335,21 +342,21 @@ function TeamDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup 
 
         {!loading && !error && teams.length > 0 && (
           <div className="space-y-3">
-            {!isCaptain && (
+            {!shouldShowOnlyUserTeam && (
               <div className="text-[0.9rem] text-[#cbd5ff] mb-4 text-center">
                 Total Teams: <span className="text-[#ffe66d] font-bold">{teams.length}</span>
               </div>
             )}
             {teams.map((team) => {
               const isExpanded = expandedTeams.has(team.team_name)
-              // Check if this is the captain's team
-              const isCaptainTeam = isCaptain && loggedInUser && 
+              // Check if this is the user's team (captain or enrolled participant)
+              const isUserTeam = shouldShowOnlyUserTeam && loggedInUser && 
                 team.players.some(player => player.reg_number === loggedInUser.reg_number)
               return (
                 <div
                   key={team.team_name}
                   className={`border rounded-[12px] overflow-hidden ${
-                    isCaptainTeam 
+                    isUserTeam 
                       ? 'border-[rgba(255,230,109,0.5)] bg-[rgba(255,230,109,0.05)]' 
                       : 'border-[rgba(148,163,184,0.3)] bg-[rgba(15,23,42,0.6)]'
                   }`}
@@ -367,7 +374,7 @@ function TeamDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup 
                         <span className="text-[#e5e7eb] font-semibold text-[0.95rem]">
                           {team.team_name}
                         </span>
-                        {isCaptainTeam && (
+                        {isUserTeam && (
                           <span className="px-2 py-0.5 rounded text-[0.7rem] font-bold bg-[rgba(255,230,109,0.2)] text-[#ffe66d] border border-[rgba(255,230,109,0.4)]">
                             YOUR TEAM
                           </span>
@@ -462,16 +469,16 @@ function TeamDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup 
                                       className="px-[10px] py-2 rounded-[10px] border border-[rgba(148,163,184,0.6)] bg-[rgba(15,23,42,0.9)] text-[#e2e8f0] text-[0.9rem] outline-none transition-all duration-[0.15s] ease-in-out focus:border-[#ffe66d] focus:shadow-[0_0_0_1px_rgba(255,230,109,0.55),0_0_16px_rgba(248,250,252,0.2)] focus:-translate-y-[1px]"
                                     >
                                       <option value="">Select Player</option>
-                                      {students
-                                        .filter((student) => 
-                                          student.reg_number !== '00000000000' && 
-                                          student.gender === teamGender &&
-                                          student.year === teamYear &&
-                                          (student.reg_number === selectedReplacementPlayer || !otherSelectedRegNumbers.includes(student.reg_number))
+                                      {players
+                                        .filter((player) => 
+                                          player.reg_number !== 'admin' && 
+                                          player.gender === teamGender &&
+                                          player.year === teamYear &&
+                                          (player.reg_number === selectedReplacementPlayer || !otherSelectedRegNumbers.includes(player.reg_number))
                                         )
-                                        .map((student) => (
-                                          <option key={student.reg_number} value={student.reg_number}>
-                                            {student.full_name} ({student.reg_number})
+                                        .map((player) => (
+                                          <option key={player.reg_number} value={player.reg_number}>
+                                            {player.full_name} ({player.reg_number})
                                           </option>
                                         ))}
                                     </select>

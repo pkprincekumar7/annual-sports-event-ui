@@ -1,79 +1,80 @@
 import { useState, useEffect } from 'react'
+import { fetchWithAuth } from '../utils/api'
 
-function StudentListModal({ isOpen, onClose, onStatusPopup }) {
-  const [students, setStudents] = useState([])
-  const [filteredStudents, setFilteredStudents] = useState([])
+function PlayerListModal({ isOpen, onClose, onStatusPopup }) {
+  const [players, setPlayers] = useState([])
+  const [filteredPlayers, setFilteredPlayers] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(false)
-  const [editingStudent, setEditingStudent] = useState(null)
+  const [editingPlayer, setEditingPlayer] = useState(null)
   const [editedData, setEditedData] = useState({})
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
-      fetchStudents()
+      fetchPlayers()
     } else {
       // Reset state when modal closes
-      setStudents([])
-      setFilteredStudents([])
+      setPlayers([])
+      setFilteredPlayers([])
       setSearchQuery('')
-      setEditingStudent(null)
+      setEditingPlayer(null)
       setEditedData({})
     }
   }, [isOpen])
 
   useEffect(() => {
     if (searchQuery.trim() === '') {
-      setFilteredStudents(students)
+      setFilteredPlayers(players)
     } else {
       const query = searchQuery.toLowerCase()
-      const filtered = students.filter(
-        student =>
-          student.reg_number.toLowerCase().includes(query) ||
-          student.full_name.toLowerCase().includes(query)
+      const filtered = players.filter(
+        player =>
+          player.reg_number.toLowerCase().includes(query) ||
+          player.full_name.toLowerCase().includes(query)
       )
-      setFilteredStudents(filtered)
+      setFilteredPlayers(filtered)
     }
-  }, [searchQuery, students])
+  }, [searchQuery, players])
 
-  const fetchStudents = async () => {
+  const fetchPlayers = async () => {
     setLoading(true)
     try {
-      const response = await fetch('http://localhost:3001/api/students')
+      const response = await fetchWithAuth('/api/players')
       const data = await response.json()
       if (data.success) {
         // Filter out admin user
-        const filteredStudents = (data.students || []).filter(
-          s => s.reg_number !== '00000000000'
+        const filteredPlayers = (data.players || []).filter(
+          p => p.reg_number !== 'admin'
         )
-        setStudents(filteredStudents)
-        setFilteredStudents(filteredStudents)
+        setPlayers(filteredPlayers)
+        setFilteredPlayers(filteredPlayers)
       }
     } catch (err) {
-      console.error('Error fetching students:', err)
+      console.error('Error fetching players:', err)
       if (onStatusPopup) {
-        onStatusPopup('❌ Error fetching students. Please try again.', 'error', 3000)
+        onStatusPopup('❌ Error fetching players. Please try again.', 'error', 3000)
       }
     } finally {
       setLoading(false)
     }
   }
 
-  const handleStudentClick = (student) => {
-    setEditingStudent(student.reg_number)
+  const handlePlayerClick = (player) => {
+    setEditingPlayer(player.reg_number)
     setEditedData({
-      reg_number: student.reg_number,
-      full_name: student.full_name,
-      gender: student.gender,
-      department_branch: student.department_branch,
-      year: student.year,
-      mobile_number: student.mobile_number,
-      email_id: student.email_id,
+      reg_number: player.reg_number,
+      full_name: player.full_name,
+      gender: player.gender,
+      department_branch: player.department_branch,
+      year: player.year,
+      mobile_number: player.mobile_number,
+      email_id: player.email_id,
     })
   }
 
   const handleCancelEdit = () => {
-    setEditingStudent(null)
+    setEditingPlayer(null)
     setEditedData({})
   }
 
@@ -84,7 +85,7 @@ function StudentListModal({ isOpen, onClose, onStatusPopup }) {
     }))
   }
 
-  const handleSaveStudent = async () => {
+  const handleSavePlayer = async () => {
     // Validate required fields
     if (!editedData.reg_number || !editedData.full_name || !editedData.gender || 
         !editedData.department_branch || !editedData.year || !editedData.mobile_number || 
@@ -115,11 +116,8 @@ function StudentListModal({ isOpen, onClose, onStatusPopup }) {
 
     setSaving(true)
     try {
-      const response = await fetch('http://localhost:3001/api/update-student', {
+      const response = await fetchWithAuth('/api/update-player', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(editedData),
       })
 
@@ -127,22 +125,22 @@ function StudentListModal({ isOpen, onClose, onStatusPopup }) {
 
       if (response.ok && data.success) {
         if (onStatusPopup) {
-          onStatusPopup('✅ Student details updated successfully!', 'success', 2500)
+          onStatusPopup('✅ Player details updated successfully!', 'success', 2500)
         }
-        // Refresh students list
-        await fetchStudents()
-        setEditingStudent(null)
+        // Refresh players list
+        await fetchPlayers()
+        setEditingPlayer(null)
         setEditedData({})
       } else {
-        const errorMessage = data.error || 'Failed to update student. Please try again.'
+        const errorMessage = data.error || 'Failed to update player. Please try again.'
         if (onStatusPopup) {
           onStatusPopup(`❌ ${errorMessage}`, 'error', 4000)
         }
       }
     } catch (err) {
-      console.error('Error updating student:', err)
+      console.error('Error updating player:', err)
       if (onStatusPopup) {
-        onStatusPopup('❌ Error updating student. Please try again.', 'error', 3000)
+        onStatusPopup('❌ Error updating player. Please try again.', 'error', 3000)
       }
     } finally {
       setSaving(false)
@@ -171,7 +169,7 @@ function StudentListModal({ isOpen, onClose, onStatusPopup }) {
           Admin Panel
         </div>
         <div className="text-[1.25rem] font-extrabold text-center uppercase tracking-[0.14em] text-[#ffe66d] mb-[0.7rem]">
-          List Students
+          List Players
         </div>
         <div className="text-[0.85rem] text-center text-[#e5e7eb] mb-4">
           PCE, Purnea • Umang – 2026 Sports Fest
@@ -179,12 +177,12 @@ function StudentListModal({ isOpen, onClose, onStatusPopup }) {
 
         {/* Search Bar */}
         <div className="mb-4">
-          <label htmlFor="searchStudent" className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em] block">
+          <label htmlFor="searchPlayer" className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em] block">
             Search by Registration Number or Name
           </label>
           <input
             type="text"
-            id="searchStudent"
+            id="searchPlayer"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Type registration number or name to search..."
@@ -194,41 +192,41 @@ function StudentListModal({ isOpen, onClose, onStatusPopup }) {
 
         {loading && (
           <div className="text-center py-8 text-[#a5b4fc]">
-            Loading students...
+            Loading players...
           </div>
         )}
 
-        {!loading && filteredStudents.length === 0 && (
+        {!loading && filteredPlayers.length === 0 && (
           <div className="text-center py-8 text-[#a5b4fc]">
-            {searchQuery ? 'No students found matching your search.' : 'No students found.'}
+            {searchQuery ? 'No players found matching your search.' : 'No players found.'}
           </div>
         )}
 
-        {!loading && filteredStudents.length > 0 && (
+        {!loading && filteredPlayers.length > 0 && (
           <div className="space-y-2 max-h-[60vh] overflow-y-auto">
             <div className="text-[0.9rem] text-[#cbd5ff] mb-2 text-center">
-              Total Students: <span className="text-[#ffe66d] font-bold">{filteredStudents.length}</span>
+              Total Players: <span className="text-[#ffe66d] font-bold">{filteredPlayers.length}</span>
             </div>
-            {filteredStudents.map((student) => {
-              const isEditing = editingStudent === student.reg_number
+            {filteredPlayers.map((player) => {
+              const isEditing = editingPlayer === player.reg_number
               return (
                 <div
-                  key={student.reg_number}
+                  key={player.reg_number}
                   className={`px-4 py-3 rounded-[12px] border ${
                     isEditing
                       ? 'border-[rgba(255,230,109,0.5)] bg-[rgba(255,230,109,0.05)]'
                       : 'border-[rgba(148,163,184,0.3)] bg-[rgba(15,23,42,0.6)] cursor-pointer hover:bg-[rgba(15,23,42,0.8)] transition-colors'
                   }`}
-                  onClick={() => !isEditing && handleStudentClick(student)}
+                  onClick={() => !isEditing && handlePlayerClick(player)}
                 >
                   {!isEditing ? (
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="text-[#e5e7eb] font-semibold text-[0.95rem]">
-                          {student.full_name}
+                          {player.full_name}
                         </div>
                         <div className="text-[#a5b4fc] text-[0.8rem] mt-1">
-                          Reg. No: {student.reg_number} • {student.department_branch} • {student.year}
+                          Reg. No: {player.reg_number} • {player.department_branch} • {player.year}
                         </div>
                       </div>
                       <div className="text-[#ffe66d] text-sm">Click to edit</div>
@@ -236,7 +234,7 @@ function StudentListModal({ isOpen, onClose, onStatusPopup }) {
                   ) : (
                     <div className="space-y-3">
                       <div className="text-[#cbd5ff] text-[0.85rem] mb-3 font-semibold">
-                        Editing: {student.full_name} ({student.reg_number})
+                        Editing: {player.full_name} ({player.reg_number})
                       </div>
                       
                       <div className="grid grid-cols-2 gap-3">
@@ -332,7 +330,7 @@ function StudentListModal({ isOpen, onClose, onStatusPopup }) {
                       <div className="flex gap-2 mt-4">
                         <button
                           type="button"
-                          onClick={handleSaveStudent}
+                          onClick={handleSavePlayer}
                           disabled={saving}
                           className="flex-1 px-4 py-2 rounded-[8px] text-[0.85rem] font-semibold bg-gradient-to-r from-[#ffe66d] to-[#ff9f1c] text-[#111827] border-none disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-[0_4px_12px_rgba(250,204,21,0.4)] transition-all"
                         >
@@ -369,5 +367,5 @@ function StudentListModal({ isOpen, onClose, onStatusPopup }) {
   )
 }
 
-export default StudentListModal
+export default PlayerListModal
 

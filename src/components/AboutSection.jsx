@@ -7,7 +7,7 @@ function AboutSection() {
         of Engineering. Get ready to showcase your talent, sportsmanship, and team spirit!
       </p>
       <p className="text-[0.95rem] leading-relaxed text-[#e5e7eb] mb-[0.7rem]">
-        Students are encouraged to participate in multiple sports events. Whether you are an athlete or a team
+        Players are encouraged to participate in multiple sports events. Whether you are an athlete or a team
         player, there is something for everyone.
       </p>
       <p className="text-[0.95rem] text-[#fed7aa] mt-[0.8rem]">
