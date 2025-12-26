@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react'
-
-const SCRIPT_URL =
-  'https://script.google.com/macros/s/AKfycbzc16n3UxlBROhxToMYhdS-sC6AnLX9Wk5_8ymnchwbSUUT13oigk89A6EK9J1mY5NJGA/exec'
+import { fetchWithAuth, API_URL } from '../utils/api'
 
 function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedInUser, onUserUpdate }) {
   const [registrationCountdown, setRegistrationCountdown] = useState('')
   const [players, setPlayers] = useState([])
   const [selectedPlayers, setSelectedPlayers] = useState({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const isTeam = selectedSport?.type === 'team'
   const playerCount = isTeam ? selectedSport?.players || 0 : 0
@@ -15,7 +14,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
   // Fetch players list for team player dropdowns
   useEffect(() => {
     if (isOpen && isTeam) {
-      fetch('http://localhost:3001/api/players')
+      fetchWithAuth('/api/players')
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
@@ -43,6 +42,10 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
       setSelectedPlayers(initial)
     } else {
       setSelectedPlayers({})
+    }
+    // Reset submitting state when modal closes
+    if (!isOpen) {
+      setIsSubmitting(false)
     }
   }, [isOpen, isTeam, playerCount, loggedInUser])
 
@@ -87,6 +90,8 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
   const handleGeneralSubmit = async (e) => {
     e.preventDefault()
 
+    if (isSubmitting) return
+
     const form = e.target
     const regNumber = form.querySelector('[name="reg_number"]')?.value?.trim()
     const fullName = form.querySelector('[name="full_name"]')?.value?.trim()
@@ -102,9 +107,10 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
       return
     }
 
+    setIsSubmitting(true)
     try {
       // Save to JSON file via backend API
-      const response = await fetch('http://localhost:3001/api/save-player', {
+      const response = await fetch(`${API_URL}/api/save-player`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -126,6 +132,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
       if (response.ok && data.success) {
         onStatusPopup('✅ Your registration has been saved!', 'success', 2500)
         form.reset()
+        setIsSubmitting(false)
         setTimeout(() => {
           onClose()
         }, 2500)
@@ -133,16 +140,20 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
         // Handle error response (including duplicate registration)
         const errorMessage = data.error || 'Error while saving. Please try again.'
         onStatusPopup(`❌ ${errorMessage}`, 'error', 3000)
+        setIsSubmitting(false)
       }
     } catch (err) {
       console.error(err)
       onStatusPopup('❌ Error while saving. Please try again.', 'error', 2500)
+      setIsSubmitting(false)
     }
   }
 
   // Handle team event form submission
   const handleTeamSubmit = async (e) => {
     e.preventDefault()
+
+    if (isSubmitting) return
 
     if (!loggedInUser) {
       onStatusPopup('❌ Please login to register a team.', 'error', 2500)
@@ -231,13 +242,13 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
       return
     }
 
+    // All client-side validation passed, now set submitting state before API calls
+    setIsSubmitting(true)
+
     // Validate participation limits before submitting
     try {
-      const validationResponse = await fetch('http://localhost:3001/api/validate-participations', {
+      const validationResponse = await fetchWithAuth('/api/validate-participations', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           reg_numbers: playerRegNumbers,
           sport: selectedSport.name,
@@ -248,43 +259,22 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
       if (!validationResponse.ok || !validationData.success) {
         const errorMessage = validationData.error || 'Some players cannot participate. Please check and try again.'
         onStatusPopup(`❌ ${errorMessage}`, 'error', 5000)
+        setIsSubmitting(false)
         return
       }
     } catch (validationError) {
       console.error('Error validating participations:', validationError)
-      // Continue with submission if validation fails (network error)
+      onStatusPopup('❌ Error validating participations. Please try again.', 'error', 4000)
+      setIsSubmitting(false)
+      return
     }
 
     try {
-      const formData = new FormData()
-      formData.append('sports', selectedSport.name)
-      formData.append('eventType', 'team')
-      formData.append('teamName', teamName)
-      formData.append('collegeName', 'Purnea College of Engineering, Purnea')
-
-      // Add selected players
-      for (let i = 1; i <= playerCount; i++) {
-        const player = players.find((p) => p.reg_number === selectedPlayers[i])
-        if (player) {
-          formData.append(`player_${i}`, `${player.full_name} (${player.reg_number})`)
-        }
-      }
-
-      // Submit to Google Apps Script
-      await fetch(SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        body: formData,
-      })
-
       // Update participated_in for all selected players (already collected above)
       if (playerRegNumbers.length > 0) {
         try {
-          const participationResponse = await fetch('http://localhost:3001/api/update-team-participation', {
+          const participationResponse = await fetchWithAuth('/api/update-team-participation', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
             body: JSON.stringify({
               reg_numbers: playerRegNumbers,
               sport: selectedSport.name,
@@ -298,6 +288,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
             // Show error message to user
             const errorMessage = participationData.error || 'Error updating player participations. Please try again.'
             onStatusPopup(`❌ ${errorMessage}`, 'error', 5000)
+            setIsSubmitting(false)
             return // Don't proceed with closing modal
           }
 
@@ -305,7 +296,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
           if (loggedInUser && playerRegNumbers.includes(loggedInUser.reg_number) && onUserUpdate) {
             // Fetch updated player data
             try {
-              const playerResponse = await fetch('http://localhost:3001/api/players')
+              const playerResponse = await fetchWithAuth('/api/players')
               const playerData = await playerResponse.json()
               if (playerData.success) {
                 const updatedPlayer = playerData.players.find(p => p.reg_number === loggedInUser.reg_number)
@@ -322,6 +313,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
         } catch (participationError) {
           console.error('Error updating participation:', participationError)
           onStatusPopup('❌ Error updating player participations. Please try again.', 'error', 4000)
+          setIsSubmitting(false)
           return
         }
       }
@@ -330,12 +322,14 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
 
       form.reset()
       setSelectedPlayers({})
+      setIsSubmitting(false)
       setTimeout(() => {
         onClose()
       }, 2500)
     } catch (err) {
       console.error(err)
       onStatusPopup('❌ Error while submitting. Please try again.', 'error', 2500)
+      setIsSubmitting(false)
     }
   }
 
@@ -346,32 +340,19 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
       return
     }
 
+    if (isSubmitting) return
+
     if (!loggedInUser) {
       onStatusPopup('❌ Please login to participate.', 'error', 2500)
       return
     }
 
+    setIsSubmitting(true)
     try {
-      const formData = new FormData()
-      formData.append('sports', selectedSport.name)
-      formData.append('eventType', 'individual')
-      formData.append('collegeName', 'Purnea College of Engineering, Purnea')
-      formData.append('confirmed', 'yes')
-
-      // Submit to Google Apps Script
-      await fetch(SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        body: formData,
-      })
-
       // Update participated_in field in players.json
       try {
-        const response = await fetch('http://localhost:3001/api/update-participation', {
+        const response = await fetchWithAuth('/api/update-participation', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
           body: JSON.stringify({
             reg_number: loggedInUser.reg_number,
             sport: selectedSport.name,
@@ -384,6 +365,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
           // Show error message to user
           const errorMessage = data.error || 'Error updating participation. Please try again.'
           onStatusPopup(`❌ ${errorMessage}`, 'error', 5000)
+          setIsSubmitting(false)
           return // Don't proceed with closing modal or showing success
         }
 
@@ -394,6 +376,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
         }
 
         onStatusPopup(`✅ Your registration for ${selectedSport.name.toUpperCase()} has been saved!`, 'success', 2500)
+        setIsSubmitting(false)
 
         setTimeout(() => {
           onClose()
@@ -401,11 +384,13 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
       } catch (participationError) {
         console.error('Error updating participation:', participationError)
         onStatusPopup('❌ Error updating participation. Please try again.', 'error', 4000)
+        setIsSubmitting(false)
         return
       }
     } catch (err) {
       console.error(err)
       onStatusPopup('❌ Error while submitting. Please try again.', 'error', 2500)
+      setIsSubmitting(false)
     }
   }
 
@@ -447,14 +432,16 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
             <button
               type="button"
               onClick={() => handleIndividualConfirm(true)}
-              className="flex-1 rounded-full border-none py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#ffe66d] to-[#ff9f1c] text-[#111827] shadow-[0_10px_24px_rgba(250,204,21,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(250,204,21,0.75)]"
+              disabled={isSubmitting}
+              className="flex-1 rounded-full border-none py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#ffe66d] to-[#ff9f1c] text-[#111827] shadow-[0_10px_24px_rgba(250,204,21,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(250,204,21,0.75)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
             >
-              Yes
+              {isSubmitting ? 'Submitting...' : 'Yes'}
             </button>
             <button
               type="button"
               onClick={() => handleIndividualConfirm(false)}
-              className="flex-1 rounded-full border border-[rgba(148,163,184,0.7)] py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-[rgba(15,23,42,0.95)] text-[#e5e7eb] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(15,23,42,0.9)]"
+              disabled={isSubmitting}
+              className="flex-1 rounded-full border border-[rgba(148,163,184,0.7)] py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-[rgba(15,23,42,0.95)] text-[#e5e7eb] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(15,23,42,0.9)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
             >
               No
             </button>
@@ -538,7 +525,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
                     <option value="">Select Player</option>
                     {players
                       .filter((player) => 
-                        player.reg_number !== '00000000000' && 
+                        player.reg_number !== 'admin' && 
                         player.gender === loggedInUser?.gender &&
                         player.year === loggedInUser?.year &&
                         (player.reg_number === selectedPlayers[index] || !otherSelectedRegNumbers.includes(player.reg_number))
@@ -563,14 +550,16 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
             <div className="flex gap-[0.6rem] mt-[0.8rem]">
               <button
                 type="submit"
-                className="flex-1 rounded-full border-none py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#ffe66d] to-[#ff9f1c] text-[#111827] shadow-[0_10px_24px_rgba(250,204,21,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(250,204,21,0.75)]"
+                disabled={isSubmitting}
+                className="flex-1 rounded-full border-none py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#ffe66d] to-[#ff9f1c] text-[#111827] shadow-[0_10px_24px_rgba(250,204,21,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(250,204,21,0.75)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
               >
-                Submit
+                {isSubmitting ? 'Submitting...' : 'Submit'}
               </button>
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 rounded-full border border-[rgba(148,163,184,0.7)] py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-[rgba(15,23,42,0.95)] text-[#e5e7eb] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(15,23,42,0.9)]"
+                disabled={isSubmitting}
+                className="flex-1 rounded-full border border-[rgba(148,163,184,0.7)] py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-[rgba(15,23,42,0.95)] text-[#e5e7eb] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(15,23,42,0.9)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
               >
                 Cancel
               </button>
@@ -732,14 +721,16 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
           <div className="flex gap-[0.6rem] mt-[0.8rem]">
             <button
               type="submit"
-              className="flex-1 rounded-full border-none py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#ffe66d] to-[#ff9f1c] text-[#111827] shadow-[0_10px_24px_rgba(250,204,21,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(250,204,21,0.75)]"
+              disabled={isSubmitting}
+              className="flex-1 rounded-full border-none py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#ffe66d] to-[#ff9f1c] text-[#111827] shadow-[0_10px_24px_rgba(250,204,21,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(250,204,21,0.75)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
             >
-              Submit
+              {isSubmitting ? 'Registering...' : 'Submit'}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-full border border-[rgba(148,163,184,0.7)] py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-[rgba(15,23,42,0.95)] text-[#e5e7eb] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(15,23,42,0.9)]"
+              disabled={isSubmitting}
+              className="flex-1 rounded-full border border-[rgba(148,163,184,0.7)] py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-[rgba(15,23,42,0.95)] text-[#e5e7eb] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(15,23,42,0.9)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
             >
               Cancel
             </button>

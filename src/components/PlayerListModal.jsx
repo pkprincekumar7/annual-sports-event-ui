@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { fetchWithAuth } from '../utils/api'
 
 function PlayerListModal({ isOpen, onClose, onStatusPopup }) {
   const [players, setPlayers] = useState([])
@@ -39,12 +40,12 @@ function PlayerListModal({ isOpen, onClose, onStatusPopup }) {
   const fetchPlayers = async () => {
     setLoading(true)
     try {
-      const response = await fetch('http://localhost:3001/api/players')
+      const response = await fetchWithAuth('/api/players')
       const data = await response.json()
       if (data.success) {
         // Filter out admin user
         const filteredPlayers = (data.players || []).filter(
-          p => p.reg_number !== '00000000000'
+          p => p.reg_number !== 'admin'
         )
         setPlayers(filteredPlayers)
         setFilteredPlayers(filteredPlayers)
@@ -115,11 +116,8 @@ function PlayerListModal({ isOpen, onClose, onStatusPopup }) {
 
     setSaving(true)
     try {
-      const response = await fetch('http://localhost:3001/api/update-player', {
+      const response = await fetchWithAuth('/api/update-player', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(editedData),
       })
 

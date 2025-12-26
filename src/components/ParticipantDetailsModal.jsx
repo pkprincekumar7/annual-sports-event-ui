@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { fetchWithAuth } from '../utils/api'
 
 function ParticipantDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup }) {
   const [participants, setParticipants] = useState([])
@@ -36,10 +37,10 @@ function ParticipantDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatu
     try {
       // URL encode the sport name to handle special characters
       const encodedSport = encodeURIComponent(sport)
-      const url = `http://localhost:3001/api/participants/${encodedSport}`
+      const url = `/api/participants/${encodedSport}`
       console.log('Fetching participants for sport:', sport, 'URL:', url)
       
-      const response = await fetch(url)
+      const response = await fetchWithAuth(url)
       
       if (!response.ok) {
         // Try to get error message from response
@@ -94,11 +95,8 @@ function ParticipantDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatu
     setDeleting(true)
     setShowDeleteConfirm(false)
     try {
-      const response = await fetch('http://localhost:3001/api/remove-participation', {
+      const response = await fetchWithAuth('/api/remove-participation', {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           reg_number: participantToDelete.reg_number,
           sport: sport,
@@ -141,7 +139,7 @@ function ParticipantDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatu
     setParticipantToDelete(null)
   }
 
-  const isAdmin = loggedInUser?.reg_number === '00000000000'
+  const isAdmin = loggedInUser?.reg_number === 'admin'
 
   if (!isOpen) return null
 
@@ -202,48 +200,51 @@ function ParticipantDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatu
                     key={participant.reg_number}
                     className="border border-[rgba(148,163,184,0.3)] rounded-[12px] bg-[rgba(15,23,42,0.6)] overflow-hidden"
                   >
-                    <button
-                      type="button"
-                      onClick={() => toggleParticipant(participant.reg_number)}
-                      className="w-full px-4 py-3 flex items-center justify-between hover:bg-[rgba(255,230,109,0.1)] transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-[#ffe66d] text-lg">
-                          {isExpanded ? '▼' : '▶'}
-                        </span>
-                        <span className="text-[#ffe66d] font-bold text-[0.85rem]">
-                          {index + 1}.
-                        </span>
-                        <span className="text-[#e5e7eb] font-semibold text-[0.95rem]">
-                          {participant.full_name}
-                        </span>
-                        <span className="text-[#a5b4fc] text-[0.8rem]">
-                          ({participant.reg_number})
-                        </span>
-                      </div>
-                    </button>
+                    <div className="flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => toggleParticipant(participant.reg_number)}
+                        className="flex-1 px-4 py-3 flex items-center justify-between hover:bg-[rgba(255,230,109,0.1)] transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-[#ffe66d] text-lg">
+                            {isExpanded ? '▼' : '▶'}
+                          </span>
+                          <span className="text-[#ffe66d] font-bold text-[0.85rem]">
+                            {index + 1}.
+                          </span>
+                          <span className="text-[#e5e7eb] font-semibold text-[0.95rem]">
+                            {participant.full_name}
+                          </span>
+                          <span className="text-[#a5b4fc] text-[0.8rem]">
+                            ({participant.reg_number})
+                          </span>
+                        </div>
+                      </button>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteClick(participant)
+                          }}
+                          disabled={deleting}
+                          className="ml-2 px-3 py-1.5 rounded-[6px] text-[0.8rem] font-semibold bg-[rgba(239,68,68,0.2)] text-red-400 border border-[rgba(239,68,68,0.4)] hover:bg-[rgba(239,68,68,0.3)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Remove Participation"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
 
                     {isExpanded && (
                       <div className="px-4 pb-4 pt-2 border-t border-[rgba(148,163,184,0.2)]">
-                        <div className="flex items-start justify-between">
-                          <div className="text-[#cbd5ff] text-[0.85rem] ml-6 space-y-1 flex-1">
-                            <div>Department: <span className="text-[#e5e7eb]">{participant.department_branch}</span></div>
-                            <div>Year: <span className="text-[#e5e7eb]">{participant.year}</span></div>
-                            <div>Gender: <span className="text-[#e5e7eb]">{participant.gender}</span></div>
-                            <div>Mobile: <span className="text-[#e5e7eb]">{participant.mobile_number}</span></div>
-                            <div>Email: <span className="text-[#e5e7eb]">{participant.email_id}</span></div>
-                          </div>
-                          {isAdmin && (
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteClick(participant)}
-                              disabled={deleting}
-                              className="ml-4 px-4 py-1.5 rounded-[8px] text-[0.8rem] font-semibold uppercase tracking-[0.05em] transition-all bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white cursor-pointer hover:shadow-[0_4px_12px_rgba(239,68,68,0.4)] hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                              title="Remove Participation"
-                            >
-                              {deleting ? 'Removing...' : 'Delete'}
-                            </button>
-                          )}
+                        <div className="text-[#cbd5ff] text-[0.85rem] ml-6 space-y-1">
+                          <div>Department: <span className="text-[#e5e7eb]">{participant.department_branch}</span></div>
+                          <div>Year: <span className="text-[#e5e7eb]">{participant.year}</span></div>
+                          <div>Gender: <span className="text-[#e5e7eb]">{participant.gender}</span></div>
+                          <div>Mobile: <span className="text-[#e5e7eb]">{participant.mobile_number}</span></div>
+                          <div>Email: <span className="text-[#e5e7eb]">{participant.email_id}</span></div>
                         </div>
                       </div>
                     )}

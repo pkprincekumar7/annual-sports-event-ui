@@ -34,7 +34,7 @@ const sportsData = {
 }
 
 function SportCard({ sport, type, onSportClick, loggedInUser, isEnrolled }) {
-  const isAdmin = loggedInUser?.reg_number === '00000000000'
+  const isAdmin = loggedInUser?.reg_number === 'admin'
   const showEnrolled = !isAdmin && isEnrolled
 
   return (
@@ -65,10 +65,10 @@ function SportCard({ sport, type, onSportClick, loggedInUser, isEnrolled }) {
 function SportsSection({ onSportClick, loggedInUser }) {
   // Show Team Events if:
   // - User is not logged in (show all events)
-  // - OR logged in user's reg_number is "00000000000" (admin - show all)
+  // - OR logged in user's reg_number is "admin" (admin - show all)
   // - OR logged in user has non-empty captain_in array (show only sports in captain_in)
   // - OR logged in user is enrolled in team events (has participated_in with team_name)
-  const isAdmin = loggedInUser?.reg_number === '00000000000'
+  const isAdmin = loggedInUser?.reg_number === 'admin'
   const hasCaptainRole = loggedInUser?.captain_in && Array.isArray(loggedInUser.captain_in) && loggedInUser.captain_in.length > 0
   
   // Check if user is enrolled in any team events
@@ -84,22 +84,30 @@ function SportsSection({ onSportClick, loggedInUser }) {
       // Show all team sports for non-logged-in users or admin
       return sportsData.team
     }
-    if (hasCaptainRole) {
-      // Show only sports that are in captain_in array
-      return sportsData.team.filter(sport => 
-        loggedInUser.captain_in.includes(sport.name)
-      )
-    }
-    // For non-captain users, show only sports where they are enrolled (have team_name in participated_in)
-    if (hasTeamParticipations) {
-      return sportsData.team.filter(sport => {
-        const participation = loggedInUser.participated_in.find(p => 
-          p.sport === sport.name && p.team_name
-        )
-        return !!participation
+    
+    // Collect all sports the user should see:
+    // 1. Sports where user is a captain (from captain_in)
+    // 2. Sports where user is enrolled as a participant (from participated_in with team_name)
+    const sportsToShow = new Set()
+    
+    // Add sports from captain_in
+    if (hasCaptainRole && Array.isArray(loggedInUser.captain_in)) {
+      loggedInUser.captain_in.forEach(sportName => {
+        sportsToShow.add(sportName)
       })
     }
-    return []
+    
+    // Add sports from participated_in where user is enrolled (has team_name)
+    if (hasTeamParticipations && Array.isArray(loggedInUser.participated_in)) {
+      loggedInUser.participated_in.forEach(participation => {
+        if (participation.team_name) {
+          sportsToShow.add(participation.sport)
+        }
+      })
+    }
+    
+    // Filter team sports to only include those in the set
+    return sportsData.team.filter(sport => sportsToShow.has(sport.name))
   }
 
   const teamSportsToShow = getTeamSportsToShow()

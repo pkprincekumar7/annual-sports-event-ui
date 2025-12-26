@@ -1,21 +1,23 @@
 import { useState, useEffect } from 'react'
+import { fetchWithAuth } from '../utils/api'
 
 function AddCaptainModal({ isOpen, onClose, onStatusPopup }) {
   const [players, setPlayers] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedPlayer, setSelectedPlayer] = useState(null)
   const [sports, setSports] = useState([])
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Fetch players list
   useEffect(() => {
     if (isOpen) {
-      fetch('http://localhost:3001/api/players')
+      fetchWithAuth('/api/players')
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
             // Filter out admin user
             const filteredPlayers = (data.players || []).filter(
-              (p) => p.reg_number !== '00000000000'
+              (p) => p.reg_number !== 'admin'
             )
             setPlayers(filteredPlayers)
           }
@@ -26,7 +28,7 @@ function AddCaptainModal({ isOpen, onClose, onStatusPopup }) {
         })
 
       // Fetch sports list for dropdown
-      fetch('http://localhost:3001/api/sports')
+      fetchWithAuth('/api/sports')
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
@@ -45,6 +47,7 @@ function AddCaptainModal({ isOpen, onClose, onStatusPopup }) {
     if (!isOpen) {
       setSearchQuery('')
       setSelectedPlayer(null)
+      setIsSubmitting(false)
     }
   }, [isOpen])
 
@@ -61,6 +64,8 @@ function AddCaptainModal({ isOpen, onClose, onStatusPopup }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
+    if (isSubmitting) return
+
     if (!selectedPlayer) {
       onStatusPopup('❌ Please select a player.', 'error', 2500)
       return
@@ -74,12 +79,10 @@ function AddCaptainModal({ isOpen, onClose, onStatusPopup }) {
       return
     }
 
+    setIsSubmitting(true)
     try {
-      const response = await fetch('http://localhost:3001/api/add-captain', {
+      const response = await fetchWithAuth('/api/add-captain', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           reg_number: selectedPlayer.reg_number,
           sport: sport,
@@ -96,14 +99,17 @@ function AddCaptainModal({ isOpen, onClose, onStatusPopup }) {
         )
         setSelectedPlayer(null)
         setSearchQuery('')
+        setIsSubmitting(false)
         onClose()
       } else {
         const errorMessage = data.error || 'Error adding captain. Please try again.'
         onStatusPopup(`❌ ${errorMessage}`, 'error', 3000)
+        setIsSubmitting(false)
       }
     } catch (err) {
       console.error(err)
       onStatusPopup('❌ Error adding captain. Please try again.', 'error', 2500)
+      setIsSubmitting(false)
     }
   }
 
@@ -215,14 +221,16 @@ function AddCaptainModal({ isOpen, onClose, onStatusPopup }) {
           <div className="flex gap-[0.6rem] mt-[0.8rem]">
             <button
               type="submit"
-              className="flex-1 rounded-full border-none py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#ffe66d] to-[#ff9f1c] text-[#111827] shadow-[0_10px_24px_rgba(250,204,21,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(250,204,21,0.75)]"
+              disabled={isSubmitting}
+              className="flex-1 rounded-full border-none py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#ffe66d] to-[#ff9f1c] text-[#111827] shadow-[0_10px_24px_rgba(250,204,21,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(250,204,21,0.75)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
             >
-              Submit
+              {isSubmitting ? 'Adding...' : 'Submit'}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-full border border-[rgba(148,163,184,0.7)] py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-[rgba(15,23,42,0.95)] text-[#e5e7eb] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(15,23,42,0.9)]"
+              disabled={isSubmitting}
+              className="flex-1 rounded-full border border-[rgba(148,163,184,0.7)] py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-[rgba(15,23,42,0.95)] text-[#e5e7eb] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(15,23,42,0.9)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
             >
               Cancel
             </button>

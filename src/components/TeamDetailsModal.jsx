@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { fetchWithAuth } from '../utils/api'
 
 function TeamDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup }) {
   const [teams, setTeams] = useState([])
@@ -12,7 +13,7 @@ function TeamDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup 
   const [deletingTeam, setDeletingTeam] = useState(null) // team_name being deleted
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   
-  const isAdmin = loggedInUser?.reg_number === '00000000000'
+  const isAdmin = loggedInUser?.reg_number === 'admin'
   const isCaptain = !isAdmin && loggedInUser?.captain_in && 
     Array.isArray(loggedInUser.captain_in) && 
     loggedInUser.captain_in.includes(sport)
@@ -48,12 +49,12 @@ function TeamDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup 
 
   const fetchPlayers = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/players')
+      const response = await fetchWithAuth('/api/players')
       const data = await response.json()
       if (data.success) {
         // Filter out admin user
         const filteredPlayers = (data.players || []).filter(
-          p => p.reg_number !== '00000000000'
+          p => p.reg_number !== 'admin'
         )
         setPlayers(filteredPlayers)
       }
@@ -74,10 +75,10 @@ function TeamDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup 
     try {
       // URL encode the sport name to handle special characters like ×
       const encodedSport = encodeURIComponent(sport)
-      const url = `http://localhost:3001/api/teams/${encodedSport}`
+      const url = `/api/teams/${encodedSport}`
       console.log('Fetching teams for sport:', sport, 'URL:', url)
       
-      const response = await fetch(url)
+      const response = await fetchWithAuth(url)
       
       if (!response.ok) {
         // Try to get error message from response
@@ -215,11 +216,8 @@ function TeamDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup 
 
     setUpdating(true)
     try {
-      const response = await fetch('http://localhost:3001/api/update-team-player', {
+      const response = await fetchWithAuth('/api/update-team-player', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           team_name: editingPlayer.team_name,
           sport: sport,
@@ -257,11 +255,8 @@ function TeamDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup 
   const handleDeleteTeam = async (teamName) => {
     setUpdating(true)
     try {
-      const response = await fetch('http://localhost:3001/api/delete-team', {
+      const response = await fetchWithAuth('/api/delete-team', {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
           team_name: teamName,
           sport: sport,
@@ -476,7 +471,7 @@ function TeamDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup 
                                       <option value="">Select Player</option>
                                       {players
                                         .filter((player) => 
-                                          player.reg_number !== '00000000000' && 
+                                          player.reg_number !== 'admin' && 
                                           player.gender === teamGender &&
                                           player.year === teamYear &&
                                           (player.reg_number === selectedReplacementPlayer || !otherSelectedRegNumbers.includes(player.reg_number))
