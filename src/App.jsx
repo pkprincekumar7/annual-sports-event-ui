@@ -54,7 +54,7 @@ function App() {
         }
 
         // Fetch all players and find current user
-        const response = await fetchWithAuth('http://localhost:3001/api/players')
+        const response = await fetchWithAuth('/api/players')
         if (response.ok) {
           const data = await response.json()
           if (data.success && data.players) {
@@ -211,7 +211,7 @@ function App() {
         return
       }
 
-      const response = await fetchWithAuth('http://localhost:3001/api/players')
+      const response = await fetchWithAuth('/api/players')
       if (response.ok) {
         const data = await response.json()
         if (data.success && data.players) {
@@ -253,7 +253,7 @@ function App() {
 
   const handleExportExcel = async () => {
     try {
-      const response = await fetchWithAuth('http://localhost:3001/api/export-excel')
+      const response = await fetchWithAuth('/api/export-excel')
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))

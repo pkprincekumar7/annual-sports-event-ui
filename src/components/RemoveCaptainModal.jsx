@@ -11,7 +11,7 @@ function RemoveCaptainModal({ isOpen, onClose, onStatusPopup }) {
   // Fetch captains by sport
   useEffect(() => {
     if (isOpen) {
-      fetchWithAuth('http://localhost:3001/api/captains-by-sport')
+      fetchWithAuth('/api/captains-by-sport')
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
@@ -57,7 +57,7 @@ function RemoveCaptainModal({ isOpen, onClose, onStatusPopup }) {
     setRemoving(true)
     setShowConfirmModal(false)
     try {
-      const response = await fetchWithAuth('http://localhost:3001/api/remove-captain', {
+      const response = await fetchWithAuth('/api/remove-captain', {
         method: 'DELETE',
         body: JSON.stringify({
           reg_number: captainToRemove.regNumber,
@@ -74,7 +74,7 @@ function RemoveCaptainModal({ isOpen, onClose, onStatusPopup }) {
           3000
         )
         // Refresh the captains list
-        fetchWithAuth('http://localhost:3001/api/captains-by-sport')
+        fetchWithAuth('/api/captains-by-sport')
           .then((res) => res.json())
           .then((data) => {
             if (data.success) {

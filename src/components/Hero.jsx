@@ -20,7 +20,7 @@ function Hero({ onRegisterClick, onLoginClick, onLogout, onAddCaptainClick, onRe
           `Event starts in: ${days}d ${hours.toString().padStart(2, '0')}h ${minutes.toString().padStart(2, '0')}m ${seconds.toString().padStart(2, '0')}s`
         )
       } else {
-        setEventCountdown('Event has started!')
+        setEventCountdown('Registration closed!')
       }
     }
 

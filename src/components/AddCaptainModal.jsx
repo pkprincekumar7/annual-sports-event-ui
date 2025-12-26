@@ -11,7 +11,7 @@ function AddCaptainModal({ isOpen, onClose, onStatusPopup }) {
   // Fetch players list
   useEffect(() => {
     if (isOpen) {
-      fetchWithAuth('http://localhost:3001/api/players')
+      fetchWithAuth('/api/players')
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
@@ -28,7 +28,7 @@ function AddCaptainModal({ isOpen, onClose, onStatusPopup }) {
         })
 
       // Fetch sports list for dropdown
-      fetchWithAuth('http://localhost:3001/api/sports')
+      fetchWithAuth('/api/sports')
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
@@ -81,7 +81,7 @@ function AddCaptainModal({ isOpen, onClose, onStatusPopup }) {
 
     setIsSubmitting(true)
     try {
-      const response = await fetchWithAuth('http://localhost:3001/api/add-captain', {
+      const response = await fetchWithAuth('/api/add-captain', {
         method: 'POST',
         body: JSON.stringify({
           reg_number: selectedPlayer.reg_number,

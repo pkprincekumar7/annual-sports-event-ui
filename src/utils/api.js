@@ -1,3 +1,5 @@
+import API_URL from '../config/api.js'
+
 // Utility function to decode JWT token (without verification - for client-side use only)
 export const decodeJWT = (token) => {
   try {
@@ -16,9 +18,22 @@ export const decodeJWT = (token) => {
   }
 }
 
+// Helper function to build full API URL
+const buildApiUrl = (endpoint) => {
+  // If endpoint already starts with http, use it as-is
+  if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+    return endpoint
+  }
+  // Otherwise, prepend API_URL
+  return `${API_URL}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`
+}
+
 // Utility function for authenticated API calls
 export const fetchWithAuth = async (url, options = {}) => {
   const token = localStorage.getItem('authToken')
+  
+  // Build full URL using API_URL config
+  const fullUrl = buildApiUrl(url)
   
   const headers = {
     'Content-Type': 'application/json',
@@ -29,7 +44,7 @@ export const fetchWithAuth = async (url, options = {}) => {
     headers['Authorization'] = `Bearer ${token}`
   }
 
-  const response = await fetch(url, {
+  const response = await fetch(fullUrl, {
     ...options,
     headers,
   })
@@ -47,4 +62,7 @@ export const fetchWithAuth = async (url, options = {}) => {
 
   return response
 }
+
+// Export API_URL for direct use in components if needed
+export { API_URL }
 

@@ -40,7 +40,7 @@ function PlayerListModal({ isOpen, onClose, onStatusPopup }) {
   const fetchPlayers = async () => {
     setLoading(true)
     try {
-      const response = await fetchWithAuth('http://localhost:3001/api/players')
+      const response = await fetchWithAuth('/api/players')
       const data = await response.json()
       if (data.success) {
         // Filter out admin user
@@ -116,7 +116,7 @@ function PlayerListModal({ isOpen, onClose, onStatusPopup }) {
 
     setSaving(true)
     try {
-      const response = await fetchWithAuth('http://localhost:3001/api/update-player', {
+      const response = await fetchWithAuth('/api/update-player', {
         method: 'PUT',
         body: JSON.stringify(editedData),
       })

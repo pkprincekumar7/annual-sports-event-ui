@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { fetchWithAuth } from '../utils/api'
+import { fetchWithAuth, API_URL } from '../utils/api'
 
 function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedInUser, onUserUpdate }) {
   const [registrationCountdown, setRegistrationCountdown] = useState('')
@@ -14,7 +14,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
   // Fetch players list for team player dropdowns
   useEffect(() => {
     if (isOpen && isTeam) {
-      fetchWithAuth('http://localhost:3001/api/players')
+      fetchWithAuth('/api/players')
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
@@ -110,7 +110,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
     setIsSubmitting(true)
     try {
       // Save to JSON file via backend API
-      const response = await fetch('http://localhost:3001/api/save-player', {
+      const response = await fetch(`${API_URL}/api/save-player`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -159,8 +159,6 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
       onStatusPopup('❌ Please login to register a team.', 'error', 2500)
       return
     }
-
-    setIsSubmitting(true)
 
     const form = e.target
     const teamName = form.querySelector('[name="teamName"]')?.value?.trim()
@@ -244,9 +242,12 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
       return
     }
 
+    // All client-side validation passed, now set submitting state before API calls
+    setIsSubmitting(true)
+
     // Validate participation limits before submitting
     try {
-      const validationResponse = await fetchWithAuth('http://localhost:3001/api/validate-participations', {
+      const validationResponse = await fetchWithAuth('/api/validate-participations', {
         method: 'POST',
         body: JSON.stringify({
           reg_numbers: playerRegNumbers,
@@ -258,18 +259,21 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
       if (!validationResponse.ok || !validationData.success) {
         const errorMessage = validationData.error || 'Some players cannot participate. Please check and try again.'
         onStatusPopup(`❌ ${errorMessage}`, 'error', 5000)
+        setIsSubmitting(false)
         return
       }
     } catch (validationError) {
       console.error('Error validating participations:', validationError)
-      // Continue with submission if validation fails (network error)
+      onStatusPopup('❌ Error validating participations. Please try again.', 'error', 4000)
+      setIsSubmitting(false)
+      return
     }
 
     try {
       // Update participated_in for all selected players (already collected above)
       if (playerRegNumbers.length > 0) {
         try {
-          const participationResponse = await fetchWithAuth('http://localhost:3001/api/update-team-participation', {
+          const participationResponse = await fetchWithAuth('/api/update-team-participation', {
             method: 'POST',
             body: JSON.stringify({
               reg_numbers: playerRegNumbers,
@@ -284,6 +288,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
             // Show error message to user
             const errorMessage = participationData.error || 'Error updating player participations. Please try again.'
             onStatusPopup(`❌ ${errorMessage}`, 'error', 5000)
+            setIsSubmitting(false)
             return // Don't proceed with closing modal
           }
 
@@ -291,7 +296,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
           if (loggedInUser && playerRegNumbers.includes(loggedInUser.reg_number) && onUserUpdate) {
             // Fetch updated player data
             try {
-              const playerResponse = await fetchWithAuth('http://localhost:3001/api/players')
+              const playerResponse = await fetchWithAuth('/api/players')
               const playerData = await playerResponse.json()
               if (playerData.success) {
                 const updatedPlayer = playerData.players.find(p => p.reg_number === loggedInUser.reg_number)
@@ -308,6 +313,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
         } catch (participationError) {
           console.error('Error updating participation:', participationError)
           onStatusPopup('❌ Error updating player participations. Please try again.', 'error', 4000)
+          setIsSubmitting(false)
           return
         }
       }
@@ -345,7 +351,7 @@ function RegisterModal({ isOpen, onClose, selectedSport, onStatusPopup, loggedIn
     try {
       // Update participated_in field in players.json
       try {
-        const response = await fetchWithAuth('http://localhost:3001/api/update-participation', {
+        const response = await fetchWithAuth('/api/update-participation', {
           method: 'POST',
           body: JSON.stringify({
             reg_number: loggedInUser.reg_number,
