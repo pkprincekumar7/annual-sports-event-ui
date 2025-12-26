@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { API_URL } from '../utils/api'
 
 function LoginModal({ isOpen, onClose, onLoginSuccess, onStatusPopup }) {
   const [regNumber, setRegNumber] = useState('')
   const [password, setPassword] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -12,8 +14,9 @@ function LoginModal({ isOpen, onClose, onLoginSuccess, onStatusPopup }) {
       return
     }
 
+    setIsLoading(true)
     try {
-      const response = await fetch('http://localhost:3001/api/login', {
+      const response = await fetch(`${API_URL}/api/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -27,18 +30,26 @@ function LoginModal({ isOpen, onClose, onLoginSuccess, onStatusPopup }) {
       const data = await response.json()
 
       if (response.ok && data.success) {
+        // Store JWT token in localStorage (user data is handled by App.jsx)
+        if (data.token) {
+          localStorage.setItem('authToken', data.token)
+        }
         onStatusPopup('✅ Login successful!', 'success', 2000)
-        onLoginSuccess(data.student)
+        // Pass player data to App.jsx (will be stored in memory only)
+        onLoginSuccess(data.player, data.token)
         setRegNumber('')
         setPassword('')
+        setIsLoading(false)
         onClose()
       } else {
         const errorMessage = data.error || 'Invalid registration number or password.'
         onStatusPopup(`❌ ${errorMessage}`, 'error', 3000)
+        setIsLoading(false)
       }
     } catch (err) {
       console.error(err)
       onStatusPopup('❌ Error while logging in. Please try again.', 'error', 2500)
+      setIsLoading(false)
     }
   }
 
@@ -62,7 +73,7 @@ function LoginModal({ isOpen, onClose, onLoginSuccess, onStatusPopup }) {
 
         <div className="text-[0.78rem] uppercase tracking-[0.16em] text-[#a5b4fc] mb-1 text-center">Login</div>
         <div className="text-[1.25rem] font-extrabold text-center uppercase tracking-[0.14em] text-[#ffe66d] mb-[0.7rem]">
-          Student Login
+          Player Login
         </div>
         <div className="text-[0.85rem] text-center text-[#e5e7eb] mb-4">PCE, Purnea • Umang – 2026 Sports Fest</div>
 
@@ -100,9 +111,10 @@ function LoginModal({ isOpen, onClose, onLoginSuccess, onStatusPopup }) {
           <div className="flex gap-[0.6rem] mt-[0.8rem]">
             <button
               type="submit"
-              className="flex-1 rounded-full border-none py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#ffe66d] to-[#ff9f1c] text-[#111827] shadow-[0_10px_24px_rgba(250,204,21,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(250,204,21,0.75)]"
+              disabled={isLoading}
+              className="flex-1 rounded-full border-none py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#ffe66d] to-[#ff9f1c] text-[#111827] shadow-[0_10px_24px_rgba(250,204,21,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(250,204,21,0.75)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
             >
-              Login
+              {isLoading ? 'Logging in...' : 'Login'}
             </button>
             <button
               type="button"

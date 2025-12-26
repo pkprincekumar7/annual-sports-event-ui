@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react'
+import { fetchWithAuth } from '../utils/api'
 
-function ParticipantDetailsModal({ isOpen, onClose, sport }) {
+function ParticipantDetailsModal({ isOpen, onClose, sport, loggedInUser, onStatusPopup }) {
   const [participants, setParticipants] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [expandedParticipants, setExpandedParticipants] = useState(new Set())
+  const [deleting, setDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [participantToDelete, setParticipantToDelete] = useState(null)
 
   useEffect(() => {
     if (isOpen && sport) {
@@ -14,6 +18,9 @@ function ParticipantDetailsModal({ isOpen, onClose, sport }) {
       setParticipants([])
       setExpandedParticipants(new Set())
       setError(null)
+      setShowDeleteConfirm(false)
+      setParticipantToDelete(null)
+      setDeleting(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, sport])
@@ -30,10 +37,10 @@ function ParticipantDetailsModal({ isOpen, onClose, sport }) {
     try {
       // URL encode the sport name to handle special characters
       const encodedSport = encodeURIComponent(sport)
-      const url = `http://localhost:3001/api/participants/${encodedSport}`
+      const url = `/api/participants/${encodedSport}`
       console.log('Fetching participants for sport:', sport, 'URL:', url)
       
-      const response = await fetch(url)
+      const response = await fetchWithAuth(url)
       
       if (!response.ok) {
         // Try to get error message from response
@@ -76,6 +83,63 @@ function ParticipantDetailsModal({ isOpen, onClose, sport }) {
     }
     setExpandedParticipants(newExpanded)
   }
+
+  const handleDeleteClick = (participant) => {
+    setParticipantToDelete(participant)
+    setShowDeleteConfirm(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!participantToDelete || deleting) return
+
+    setDeleting(true)
+    setShowDeleteConfirm(false)
+    try {
+      const response = await fetchWithAuth('/api/remove-participation', {
+        method: 'DELETE',
+        body: JSON.stringify({
+          reg_number: participantToDelete.reg_number,
+          sport: sport,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        if (onStatusPopup) {
+          onStatusPopup(
+            `✅ ${participantToDelete.full_name}'s participation in ${sport} has been removed!`,
+            'success',
+            3000
+          )
+        }
+        // Refresh the participants list
+        await fetchParticipantDetails()
+        setParticipantToDelete(null)
+      } else {
+        const errorMessage = data.error || 'Error removing participation. Please try again.'
+        if (onStatusPopup) {
+          onStatusPopup(`❌ ${errorMessage}`, 'error', 3000)
+        }
+        setParticipantToDelete(null)
+      }
+    } catch (err) {
+      console.error(err)
+      if (onStatusPopup) {
+        onStatusPopup('❌ Error removing participation. Please try again.', 'error', 2500)
+      }
+      setParticipantToDelete(null)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false)
+    setParticipantToDelete(null)
+  }
+
+  const isAdmin = loggedInUser?.reg_number === 'admin'
 
   if (!isOpen) return null
 
@@ -136,26 +200,42 @@ function ParticipantDetailsModal({ isOpen, onClose, sport }) {
                     key={participant.reg_number}
                     className="border border-[rgba(148,163,184,0.3)] rounded-[12px] bg-[rgba(15,23,42,0.6)] overflow-hidden"
                   >
-                    <button
-                      type="button"
-                      onClick={() => toggleParticipant(participant.reg_number)}
-                      className="w-full px-4 py-3 flex items-center justify-between hover:bg-[rgba(255,230,109,0.1)] transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-[#ffe66d] text-lg">
-                          {isExpanded ? '▼' : '▶'}
-                        </span>
-                        <span className="text-[#ffe66d] font-bold text-[0.85rem]">
-                          {index + 1}.
-                        </span>
-                        <span className="text-[#e5e7eb] font-semibold text-[0.95rem]">
-                          {participant.full_name}
-                        </span>
-                        <span className="text-[#a5b4fc] text-[0.8rem]">
-                          ({participant.reg_number})
-                        </span>
-                      </div>
-                    </button>
+                    <div className="flex items-center">
+                      <button
+                        type="button"
+                        onClick={() => toggleParticipant(participant.reg_number)}
+                        className="flex-1 px-4 py-3 flex items-center justify-between hover:bg-[rgba(255,230,109,0.1)] transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-[#ffe66d] text-lg">
+                            {isExpanded ? '▼' : '▶'}
+                          </span>
+                          <span className="text-[#ffe66d] font-bold text-[0.85rem]">
+                            {index + 1}.
+                          </span>
+                          <span className="text-[#e5e7eb] font-semibold text-[0.95rem]">
+                            {participant.full_name}
+                          </span>
+                          <span className="text-[#a5b4fc] text-[0.8rem]">
+                            ({participant.reg_number})
+                          </span>
+                        </div>
+                      </button>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteClick(participant)
+                          }}
+                          disabled={deleting}
+                          className="ml-2 px-3 py-1.5 rounded-[6px] text-[0.8rem] font-semibold bg-[rgba(239,68,68,0.2)] text-red-400 border border-[rgba(239,68,68,0.4)] hover:bg-[rgba(239,68,68,0.3)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Remove Participation"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
 
                     {isExpanded && (
                       <div className="px-4 pb-4 pt-2 border-t border-[rgba(148,163,184,0.2)]">
@@ -185,6 +265,43 @@ function ParticipantDetailsModal({ isOpen, onClose, sport }) {
           </button>
         </div>
       </aside>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && participantToDelete && (
+        <div className="fixed inset-0 bg-[rgba(0,0,0,0.75)] flex items-center justify-center z-[300]">
+          <div className="max-w-[420px] w-full bg-gradient-to-br from-[rgba(12,16,40,0.98)] to-[rgba(9,9,26,0.94)] rounded-[20px] px-[1.4rem] py-[1.6rem] border border-[rgba(255,255,255,0.12)] shadow-[0_22px_55px_rgba(0,0,0,0.8)] backdrop-blur-[20px] relative">
+            <div className="text-[0.78rem] uppercase tracking-[0.16em] text-[#a5b4fc] mb-1 text-center">
+              Confirm Deletion
+            </div>
+            <div className="text-[1.1rem] font-extrabold text-center text-[#ffe66d] mb-4">
+              Remove Participation
+            </div>
+            <div className="text-center text-[#e5e7eb] mb-6">
+              Are you sure you want to remove <span className="font-semibold text-[#ffe66d]">{participantToDelete.full_name}</span>'s participation in <span className="font-semibold text-[#ffe66d]">{sport}</span>?
+              <br />
+              <span className="text-[0.9rem] text-red-400 mt-2 block">This action cannot be undone.</span>
+            </div>
+            <div className="flex gap-[0.6rem] mt-[0.8rem]">
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+                className="flex-1 rounded-full border-none py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-white shadow-[0_10px_24px_rgba(239,68,68,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(239,68,68,0.75)] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {deleting ? 'Removing...' : 'Delete'}
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelDelete}
+                disabled={deleting}
+                className="flex-1 rounded-full border border-[rgba(148,163,184,0.7)] py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-[rgba(15,23,42,0.95)] text-[#e5e7eb] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(15,23,42,0.9)] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

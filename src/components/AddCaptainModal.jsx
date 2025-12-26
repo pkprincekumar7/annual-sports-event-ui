@@ -1,32 +1,34 @@
 import { useState, useEffect } from 'react'
+import { fetchWithAuth } from '../utils/api'
 
 function AddCaptainModal({ isOpen, onClose, onStatusPopup }) {
-  const [students, setStudents] = useState([])
+  const [players, setPlayers] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedStudent, setSelectedStudent] = useState(null)
+  const [selectedPlayer, setSelectedPlayer] = useState(null)
   const [sports, setSports] = useState([])
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Fetch students list
+  // Fetch players list
   useEffect(() => {
     if (isOpen) {
-      fetch('http://localhost:3001/api/students')
+      fetchWithAuth('/api/players')
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
             // Filter out admin user
-            const filteredStudents = (data.students || []).filter(
-              (s) => s.reg_number !== '00000000000'
+            const filteredPlayers = (data.players || []).filter(
+              (p) => p.reg_number !== 'admin'
             )
-            setStudents(filteredStudents)
+            setPlayers(filteredPlayers)
           }
         })
         .catch((err) => {
-          console.error('Error fetching students:', err)
-          setStudents([])
+          console.error('Error fetching players:', err)
+          setPlayers([])
         })
 
       // Fetch sports list for dropdown
-      fetch('http://localhost:3001/api/sports')
+      fetchWithAuth('/api/sports')
         .then((res) => res.json())
         .then((data) => {
           if (data.success) {
@@ -44,25 +46,28 @@ function AddCaptainModal({ isOpen, onClose, onStatusPopup }) {
   useEffect(() => {
     if (!isOpen) {
       setSearchQuery('')
-      setSelectedStudent(null)
+      setSelectedPlayer(null)
+      setIsSubmitting(false)
     }
   }, [isOpen])
 
-  // Filter students based on search query
-  const filteredStudents = students.filter((student) =>
-    student.reg_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    student.full_name.toLowerCase().includes(searchQuery.toLowerCase())
+  // Filter players based on search query
+  const filteredPlayers = players.filter((player) =>
+    player.reg_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    player.full_name.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const handleStudentSelect = (student) => {
-    setSelectedStudent(student)
+  const handlePlayerSelect = (player) => {
+    setSelectedPlayer(player)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (!selectedStudent) {
-      onStatusPopup('❌ Please select a student.', 'error', 2500)
+    if (isSubmitting) return
+
+    if (!selectedPlayer) {
+      onStatusPopup('❌ Please select a player.', 'error', 2500)
       return
     }
 
@@ -74,14 +79,12 @@ function AddCaptainModal({ isOpen, onClose, onStatusPopup }) {
       return
     }
 
+    setIsSubmitting(true)
     try {
-      const response = await fetch('http://localhost:3001/api/add-captain', {
+      const response = await fetchWithAuth('/api/add-captain', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify({
-          reg_number: selectedStudent.reg_number,
+          reg_number: selectedPlayer.reg_number,
           sport: sport,
         }),
       })
@@ -90,20 +93,23 @@ function AddCaptainModal({ isOpen, onClose, onStatusPopup }) {
 
       if (response.ok && data.success) {
         onStatusPopup(
-          `✅ ${selectedStudent.full_name} has been added as captain for ${sport}!`,
+          `✅ ${selectedPlayer.full_name} has been added as captain for ${sport}!`,
           'success',
           3000
         )
-        setSelectedStudent(null)
+        setSelectedPlayer(null)
         setSearchQuery('')
+        setIsSubmitting(false)
         onClose()
       } else {
         const errorMessage = data.error || 'Error adding captain. Please try again.'
         onStatusPopup(`❌ ${errorMessage}`, 'error', 3000)
+        setIsSubmitting(false)
       }
     } catch (err) {
       console.error(err)
       onStatusPopup('❌ Error adding captain. Please try again.', 'error', 2500)
+      setIsSubmitting(false)
     }
   }
 
@@ -137,12 +143,12 @@ function AddCaptainModal({ isOpen, onClose, onStatusPopup }) {
 
         <form onSubmit={handleSubmit}>
           <div className="flex flex-col mb-[0.7rem]">
-            <label htmlFor="searchStudent" className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">
-              Search Student (by Registration Number or Name)
+            <label htmlFor="searchPlayer" className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">
+              Search Player (by Registration Number or Name)
             </label>
             <input
               type="text"
-              id="searchStudent"
+              id="searchPlayer"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Type registration number or name to search..."
@@ -152,42 +158,42 @@ function AddCaptainModal({ isOpen, onClose, onStatusPopup }) {
 
           <div className="flex flex-col mb-[0.7rem]">
             <label className="text-[0.78rem] uppercase text-[#cbd5ff] mb-1 tracking-[0.06em]">
-              Select Student
+              Select Player
             </label>
             <div className="max-h-[200px] overflow-y-auto border border-[rgba(148,163,184,0.6)] rounded-[10px] bg-[rgba(15,23,42,0.9)]">
               {searchQuery ? (
-                filteredStudents.length > 0 ? (
-                  filteredStudents.map((student) => (
+                filteredPlayers.length > 0 ? (
+                  filteredPlayers.map((player) => (
                     <div
-                      key={student.reg_number}
-                      onClick={() => handleStudentSelect(student)}
+                      key={player.reg_number}
+                      onClick={() => handlePlayerSelect(player)}
                       className={`px-[10px] py-2 cursor-pointer transition-all ${
-                        selectedStudent?.reg_number === student.reg_number
+                        selectedPlayer?.reg_number === player.reg_number
                           ? 'bg-[rgba(255,230,109,0.2)] border-l-2 border-[#ffe66d]'
                           : 'hover:bg-[rgba(148,163,184,0.1)]'
                       }`}
                     >
                       <div className="text-[#e2e8f0] text-[0.9rem] font-semibold">
-                        {student.full_name}
+                        {player.full_name}
                       </div>
-                      <div className="text-[#cbd5ff] text-[0.8rem]">Reg. No: {student.reg_number}</div>
+                      <div className="text-[#cbd5ff] text-[0.8rem]">Reg. No: {player.reg_number}</div>
                     </div>
                   ))
                 ) : (
                   <div className="px-[10px] py-4 text-center text-[#cbd5ff] text-[0.9rem]">
-                    No students found
+                    No players found
                   </div>
                 )
               ) : (
                 <div className="px-[10px] py-4 text-center text-[#cbd5ff] text-[0.9rem]">
-                  Type to search for a student
+                  Type to search for a player
                 </div>
               )}
             </div>
-            {selectedStudent && (
+            {selectedPlayer && (
               <div className="mt-2 px-[10px] py-2 rounded-[10px] bg-[rgba(255,230,109,0.1)] border border-[rgba(255,230,109,0.3)]">
                 <div className="text-[#ffe66d] text-[0.85rem] font-semibold">
-                  Selected: {selectedStudent.full_name} ({selectedStudent.reg_number})
+                  Selected: {selectedPlayer.full_name} ({selectedPlayer.reg_number})
                 </div>
               </div>
             )}
@@ -215,14 +221,16 @@ function AddCaptainModal({ isOpen, onClose, onStatusPopup }) {
           <div className="flex gap-[0.6rem] mt-[0.8rem]">
             <button
               type="submit"
-              className="flex-1 rounded-full border-none py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#ffe66d] to-[#ff9f1c] text-[#111827] shadow-[0_10px_24px_rgba(250,204,21,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(250,204,21,0.75)]"
+              disabled={isSubmitting}
+              className="flex-1 rounded-full border-none py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#ffe66d] to-[#ff9f1c] text-[#111827] shadow-[0_10px_24px_rgba(250,204,21,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(250,204,21,0.75)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
             >
-              Submit
+              {isSubmitting ? 'Adding...' : 'Submit'}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-full border border-[rgba(148,163,184,0.7)] py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-[rgba(15,23,42,0.95)] text-[#e5e7eb] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(15,23,42,0.9)]"
+              disabled={isSubmitting}
+              className="flex-1 rounded-full border border-[rgba(148,163,184,0.7)] py-[9px] text-[0.9rem] font-bold uppercase tracking-[0.1em] cursor-pointer bg-[rgba(15,23,42,0.95)] text-[#e5e7eb] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_10px_26px_rgba(15,23,42,0.9)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
             >
               Cancel
             </button>

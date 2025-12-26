@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-function Hero({ onRegisterClick, onLoginClick, onLogout, onAddCaptainClick, loggedInUser }) {
+function Hero({ onRegisterClick, onLoginClick, onLogout, onAddCaptainClick, onRemoveCaptainClick, onListPlayersClick, onExportExcel, loggedInUser }) {
   const [eventCountdown, setEventCountdown] = useState('')
 
   useEffect(() => {
@@ -20,7 +20,7 @@ function Hero({ onRegisterClick, onLoginClick, onLogout, onAddCaptainClick, logg
           `Event starts in: ${days}d ${hours.toString().padStart(2, '0')}h ${minutes.toString().padStart(2, '0')}m ${seconds.toString().padStart(2, '0')}s`
         )
       } else {
-        setEventCountdown('Event has started!')
+        setEventCountdown('Registration closed!')
       }
     }
 
@@ -87,12 +87,36 @@ function Hero({ onRegisterClick, onLoginClick, onLogout, onAddCaptainClick, logg
                 Logout
               </button>
             )}
-            {loggedInUser?.reg_number === '00000000000' && onAddCaptainClick && (
+            {loggedInUser?.reg_number === 'admin' && onAddCaptainClick && (
               <button
                 onClick={onAddCaptainClick}
                 className="px-6 py-2 rounded-full border border-[rgba(148,163,184,0.7)] text-sm font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-[#e5e7eb] shadow-[0_10px_24px_rgba(79,70,229,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(79,70,229,0.8)]"
               >
                 Add Captain
+              </button>
+            )}
+            {loggedInUser?.reg_number === 'admin' && onRemoveCaptainClick && (
+              <button
+                onClick={onRemoveCaptainClick}
+                className="px-6 py-2 rounded-full border border-[rgba(148,163,184,0.7)] text-sm font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#ef4444] to-[#dc2626] text-[#e5e7eb] shadow-[0_10px_24px_rgba(239,68,68,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(239,68,68,0.8)]"
+              >
+                Remove Captain
+              </button>
+            )}
+            {loggedInUser?.reg_number === 'admin' && onListPlayersClick && (
+              <button
+                onClick={onListPlayersClick}
+                className="px-6 py-2 rounded-full border border-[rgba(148,163,184,0.7)] text-sm font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#059669] to-[#047857] text-[#e5e7eb] shadow-[0_10px_24px_rgba(5,150,105,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(5,150,105,0.8)]"
+              >
+                List Players
+              </button>
+            )}
+            {loggedInUser?.reg_number === 'admin' && onExportExcel && (
+              <button
+                onClick={onExportExcel}
+                className="px-6 py-2 rounded-full border border-[rgba(148,163,184,0.7)] text-sm font-bold uppercase tracking-[0.1em] cursor-pointer bg-gradient-to-r from-[#3b82f6] to-[#2563eb] text-[#e5e7eb] shadow-[0_10px_24px_rgba(59,130,246,0.6)] transition-all duration-[0.12s] ease-in-out hover:-translate-y-0.5 hover:shadow-[0_16px_36px_rgba(59,130,246,0.8)]"
+              >
+                Export Excel
               </button>
             )}
           </div>
